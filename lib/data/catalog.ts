@@ -122,3 +122,13 @@ export async function countGlazesByBrand(): Promise<Map<string, number>> {
   for (const row of (data ?? []) as { brand_id: string }[]) counts.set(row.brand_id, (counts.get(row.brand_id) ?? 0) + 1);
   return counts;
 }
+
+/** Compact glaze list for pickers (layer editor, inventory, ask). */
+export async function getGlazeOptions(): Promise<
+  { id: string; name: string; brand: string; code: string | null; swatch: string | null }[]
+> {
+  const glazes = await listGlazes();
+  return glazes
+    .map((g) => ({ id: g.id, name: g.name, brand: g.brand.name, code: g.product_code, swatch: g.swatch_hex }))
+    .sort((a, b) => a.brand.localeCompare(b.brand) || a.name.localeCompare(b.name));
+}

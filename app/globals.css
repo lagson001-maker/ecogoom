@@ -1,26 +1,89 @@
 @import "tailwindcss";
 
+/* Design tokens — warm ceramic neutrals with a single clay accent.
+   Change the palette here; components only use the semantic names. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #f6f2eb;
+  --surface: #fffdf9;
+  --surface-2: #efe8dd;
+  --ink: #2b241f;
+  --ink-soft: #5a4f46;
+  --muted: #847669;
+  --line: #e4dacb;
+  --line-strong: #cfc2b0;
+  --clay: #a4552f;
+  --clay-strong: #8a4423;
+  --clay-soft: #f3e1d5;
+  --glaze: #3d5f5b;
+  --glaze-soft: #dde9e5;
+  --ok: #3f6b3a;
+  --ok-soft: #e1ecd9;
+  --warn: #8a5a12;
+  --warn-soft: #f5e8cc;
+  --danger: #9c2f25;
+  --danger-soft: #f6dcd8;
+  --focus: #1f5f8b;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-clay: var(--clay);
+  --color-clay-strong: var(--clay-strong);
+  --color-clay-soft: var(--clay-soft);
+  --color-glaze: var(--glaze);
+  --color-glaze-soft: var(--glaze-soft);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-focus: var(--focus);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-fraunces), ui-serif, Georgia, serif;
+  --radius-card: 0.875rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+dialog::backdrop {
+  background: rgb(43 36 31 / 0.45);
+}
+
+/* Native <details> marker cleanup for custom summaries */
+details > summary {
+  list-style: none;
+}
+details > summary::-webkit-details-marker {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
 }
