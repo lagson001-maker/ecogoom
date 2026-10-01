@@ -5,7 +5,8 @@ import { LinkButton } from "@/components/ui/button";
 import { GlazeAZ } from "@/features/catalog/glaze-az";
 import { GlazeFilters } from "@/features/inventory/glaze-filters";
 import { getViewer } from "@/lib/data/auth";
-import { getClayResults, listBrands, listGlazes, listSeries } from "@/lib/data/catalog";
+import { getClayResults, getPairings, listBrands, listGlazes, listSeries } from "@/lib/data/catalog";
+import { orientPairing, type OrientedPairing } from "@/lib/pairings";
 import { getInventoryGlazeIds } from "@/lib/data/personal";
 import { getCopy } from "@/lib/i18n/server";
 
@@ -26,7 +27,15 @@ export default async function GlazeLibraryPage({ searchParams }: PageProps<"/gla
     listSeries(),
     getInventoryGlazeIds(viewer.userId),
   ]);
-  const clayResults = await getClayResults(glazes.map((g) => g.id));
+  const ids = glazes.map((g) => g.id);
+  const [clayResults, pairingData] = await Promise.all([getClayResults(ids), getPairings(ids)]);
+  const pairings = new Map<string, OrientedPairing[]>();
+  for (const id of ids) {
+    const list = pairingData.pairings
+      .map((x) => orientPairing(x, id, pairingData.glazes))
+      .filter((x): x is OrientedPairing => x !== null);
+    if (list.length) pairings.set(id, list);
+  }
 
   return (
     <>
@@ -48,6 +57,7 @@ export default async function GlazeLibraryPage({ searchParams }: PageProps<"/gla
         <GlazeAZ
           glazes={glazes}
           clayResults={clayResults}
+          pairings={pairings}
           owned={new Set(owned)}
           signedIn={Boolean(viewer.userId)}
           copy={copy}

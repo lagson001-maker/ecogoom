@@ -126,6 +126,30 @@ export interface GlazeClayResult {
   updated_at: string;
 }
 
+export type PairingVerdict = "recommended" | "avoid";
+export type PairingArrangement = "over" | "under" | "mix";
+
+/** Source-backed advice about combining two glazes, stored from glaze_id's side. */
+export interface GlazePairing {
+  id: string;
+  glaze_id: string;
+  other_glaze_id: string;
+  verdict: PairingVerdict;
+  arrangement: PairingArrangement;
+  ratio_glaze: number | null;
+  ratio_other: number | null;
+  surface_rating: number | null;
+  cone: number | null;
+  effect_description: string;
+  reason: string | null;
+  source_id: string | null;
+  source_url: string | null;
+  verification_status: VerificationStatus;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 /** Glaze joined with its brand and series, as most screens need. */
 export interface GlazeWithBrand extends Glaze {
   brand: Pick<Brand, "id" | "name" | "slug">;

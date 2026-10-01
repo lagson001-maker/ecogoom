@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { GLAZE_JOIN, getRecipesUsingGlaze } from "./recipes";
-import type { Brand, GlazeClayResult, GlazeSeries, GlazeWithBrand, RecipeSummary, Source } from "@/types/domain";
+import type { Brand, GlazeClayResult, GlazePairing, GlazeSeries, GlazeWithBrand, RecipeSummary, Source } from "@/types/domain";
 
 export interface GlazeFilters {
   q?: string | null;
@@ -151,4 +151,25 @@ export async function getGlazeOptions(): Promise<
   return glazes
     .map((g) => ({ id: g.id, name: g.name, brand: g.brand.name, code: g.product_code, swatch: g.swatch_hex }))
     .sort((a, b) => a.brand.localeCompare(b.brand) || a.name.localeCompare(b.name));
+}
+
+/** Pairings touching any of these glazes, with every glaze they mention. */
+export async function getPairings(glazeIds: string[]): Promise<{ pairings: GlazePairing[]; glazes: Map<string, GlazeWithBrand> }> {
+  if (glazeIds.length === 0) return { pairings: [], glazes: new Map() };
+  const supabase = await createClient();
+  const list = glazeIds.join(",");
+  const { data, error } = await supabase
+    .from("glaze_pairings")
+    .select("*")
+    .or(`glaze_id.in.(${list}),other_glaze_id.in.(${list})`);
+  if (error) throw error;
+  const pairings = (data ?? []) as GlazePairing[];
+  const ids = [...new Set(pairings.flatMap((p) => [p.glaze_id, p.other_glaze_id]))];
+  const glazes = new Map<string, GlazeWithBrand>();
+  if (ids.length) {
+    const { data: g, error: ge } = await supabase.from("glazes").select(GLAZE_JOIN).in("id", ids);
+    if (ge) throw ge;
+    for (const x of (g ?? []) as GlazeWithBrand[]) glazes.set(x.id, x);
+  }
+  return { pairings, glazes };
 }

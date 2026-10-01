@@ -4,6 +4,8 @@ import { buttonClass } from "@/components/ui/button";
 import { InventoryButton } from "@/features/inventory/inventory-button";
 import { Swatch } from "@/features/recipes/stack";
 import { ClayResultList } from "./clay-results";
+import { PairingLists } from "./pairings";
+import type { OrientedPairing } from "@/lib/pairings";
 import { GlazeImage } from "./glaze-image";
 import { vocab } from "@/lib/vocabulary";
 import type { Messages } from "@/lib/i18n";
@@ -31,12 +33,14 @@ const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ#".split("");
 export function GlazeAZ({
   glazes,
   clayResults,
+  pairings,
   owned,
   signedIn,
   copy,
 }: {
   glazes: GlazeWithBrand[];
   clayResults: Map<string, ClayResultWithSource[]>;
+  pairings: Map<string, OrientedPairing[]>;
   owned: Set<string>;
   signedIn: boolean;
   copy: Messages;
@@ -76,6 +80,7 @@ export function GlazeAZ({
                   <GlazeRow
                     glaze={g}
                     results={clayResults.get(g.id) ?? []}
+                    pairings={pairings.get(g.id) ?? []}
                     owned={owned.has(g.id)}
                     signedIn={signedIn}
                     copy={copy}
@@ -93,12 +98,14 @@ export function GlazeAZ({
 function GlazeRow({
   glaze: g,
   results,
+  pairings,
   owned,
   signedIn,
   copy,
 }: {
   glaze: GlazeWithBrand;
   results: ClayResultWithSource[];
+  pairings: OrientedPairing[];
   owned: boolean;
   signedIn: boolean;
   copy: Messages;
@@ -160,6 +167,11 @@ function GlazeRow({
           <div>
             <p className="mb-1.5 text-sm font-medium text-ink">{t.onClayBodies}</p>
             <ClayResultList results={results} copy={copy} />
+          </div>
+
+          <div>
+            <p className="mb-1.5 text-sm font-medium text-ink">{copy.pairing.title}</p>
+            <PairingLists pairings={pairings} copy={copy} />
           </div>
 
           <div className="flex flex-wrap items-center gap-2">

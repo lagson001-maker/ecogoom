@@ -9,7 +9,9 @@ import { RecipeCard, RecipeGrid } from "@/features/recipes/recipe-card";
 import { Swatch } from "@/features/recipes/stack";
 import { ExperimentCard } from "@/features/lab/experiment-card";
 import { getViewer } from "@/lib/data/auth";
-import { getClayResults, getGlazeBySlug, getGlazeUsage, type NeighborCount } from "@/lib/data/catalog";
+import { getClayResults, getGlazeBySlug, getGlazeUsage, getPairings, type NeighborCount } from "@/lib/data/catalog";
+import { PairingLists } from "@/features/catalog/pairings";
+import { orientPairing, type OrientedPairing } from "@/lib/pairings";
 import { ClayResultList } from "@/features/catalog/clay-results";
 import { GlazeImage } from "@/features/catalog/glaze-image";
 import { getExperimentsUsingGlaze, getInventoryGlazeIds } from "@/lib/data/personal";
@@ -30,13 +32,17 @@ export default async function GlazePage({ params }: PageProps<"/glazes/[slug]">)
   const t = copy.glaze;
   const v = vocab(copy);
 
-  const [usage, owned, experiments, saved, clayResults] = await Promise.all([
+  const [usage, owned, experiments, saved, clayResults, pairingData] = await Promise.all([
     getGlazeUsage(glaze.id),
     getInventoryGlazeIds(viewer.userId),
     getExperimentsUsingGlaze(viewer.userId, glaze.id),
     getSavedRecipeIds(viewer.userId),
     getClayResults([glaze.id]),
+    getPairings([glaze.id]),
   ]);
+  const pairings = pairingData.pairings
+    .map((x) => orientPairing(x, glaze.id, pairingData.glazes))
+    .filter((x): x is OrientedPairing => x !== null);
   const celsius = v.celsius(glaze.cone_min, glaze.cone_max);
   const coats = v.coats(glaze.coats_min, glaze.coats_max);
   const signedIn = Boolean(viewer.userId);
@@ -129,6 +135,10 @@ export default async function GlazePage({ params }: PageProps<"/glazes/[slug]">)
           )}
         </div>
       </div>
+
+      <Section title={copy.pairing.title}>
+        <PairingLists pairings={pairings} copy={copy} />
+      </Section>
 
       <Section title={copy.catalog.onClayBodies}>
         <ClayResultList results={clayResults.get(glaze.id) ?? []} copy={copy} />

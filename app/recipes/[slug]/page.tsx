@@ -17,6 +17,8 @@ import { MediaGallery } from "@/features/media/media-gallery";
 import { getViewer } from "@/lib/data/auth";
 import { getRecipeBySlug, getRelatedRecipes, getSavedRecipeIds } from "@/lib/data/recipes";
 import { getExperimentsForRecipe } from "@/lib/data/personal";
+import { getPairings } from "@/lib/data/catalog";
+import { avoidedPairsIn } from "@/lib/pairings";
 import { BUCKETS } from "@/lib/storage";
 import { getCopy } from "@/lib/i18n/server";
 import { riskLevel, vocab, type Vocab } from "@/lib/vocabulary";
@@ -35,11 +37,14 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[slug]"
   const t = copy.recipe;
   const v = vocab(copy);
 
-  const [related, experiments, saved] = await Promise.all([
+  const glazeIds = [...new Set(recipe.layers.map((l) => l.glaze_id))];
+  const [related, experiments, saved, pairingData] = await Promise.all([
     getRelatedRecipes(recipe),
     getExperimentsForRecipe(viewer.userId, recipe.id),
     getSavedRecipeIds(viewer.userId),
+    getPairings(glazeIds),
   ]);
+  const avoided = avoidedPairsIn(glazeIds, pairingData.pairings);
 
   const canEdit = Boolean(
     viewer.userId &&
@@ -132,6 +137,20 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[slug]"
           <Section title={t.stackTitle} className="mt-6">
             <LayerStack layers={recipe.layers} clay={recipe.clay_body_text} />
           </Section>
+
+          {avoided.map((a) => (
+            <div key={a.id} className="mt-4">
+              <Alert tone="warn" icon={<AlertTriangle className="h-4 w-4" />} title={copy.pairing.recipeWarning}>
+                {pairingData.glazes.get(a.glaze_id)?.name} + {pairingData.glazes.get(a.other_glaze_id)?.name}:{" "}
+                {a.reason ?? a.effect_description}
+                {a.source_url && (
+                  <a href={a.source_url} target="_blank" rel="noreferrer nofollow" className="ml-1 underline">
+                    {copy.catalog.source}
+                  </a>
+                )}
+              </Alert>
+            </div>
+          ))}
 
           {highRisk && (
             <div className="mt-4">

@@ -9,7 +9,7 @@ import { slugify } from "@/lib/utils";
 import { OPACITIES } from "@/lib/vocabulary";
 import { getCopy } from "@/lib/i18n/server";
 import type { Messages } from "@/lib/i18n";
-import type { Atmosphere, ClayColor, Role, SourceType, VerificationStatus } from "@/types/domain";
+import type { Atmosphere, ClayColor, PairingArrangement, PairingVerdict, Role, SourceType, VerificationStatus } from "@/types/domain";
 
 async function requireEditorAction(): Promise<string | null> {
   const viewer = await getViewer();
@@ -208,4 +208,53 @@ export async function deleteClayResult(id: string, glazeId: string): Promise<voi
   await supabase.from("glaze_clay_results").delete().eq("id", id);
   revalidatePath("/glazes", "layout");
   revalidatePath(`/admin/glazes/${glazeId}`);
+}
+
+// --- glaze pairings ---------------------------------------------------------------
+
+const ARRANGEMENTS: PairingArrangement[] = ["over", "under", "mix"];
+
+export async function savePairing(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const copy = await getCopy();
+  if (!(await requireEditorAction())) return fail(copy.errors.unauthorized);
+  const glazeId = str(fd, "glaze_id");
+  const otherId = str(fd, "other_glaze_id");
+  const verdict = oneOf(str(fd, "verdict"), ["recommended", "avoid"] as PairingVerdict[]);
+  const arrangement = oneOf(str(fd, "arrangement"), ARRANGEMENTS);
+  const effect = str(fd, "effect_description", 2000);
+  if (!isUuid(glazeId) || !isUuid(otherId) || glazeId === otherId || !verdict || !arrangement || !effect) {
+    return fail(copy.pairing.required);
+  }
+  const rawSource = str(fd, "source_url", 1000);
+  const sourceUrl = rawSource && /^https?:\/\/\S+$/.test(rawSource) ? rawSource : null;
+  if (!sourceUrl) return fail(copy.catalog.sourceRequired);
+  const ratioGlaze = arrangement === "mix" ? int(fd, "ratio_glaze", 1, 20) : null;
+  const ratioOther = arrangement === "mix" ? int(fd, "ratio_other", 1, 20) : null;
+  if (arrangement === "mix" && (ratioGlaze === null || ratioOther === null)) return fail(copy.pairing.ratioRequired);
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("glaze_pairings").insert({
+    glaze_id: glazeId,
+    other_glaze_id: otherId,
+    verdict,
+    arrangement,
+    ratio_glaze: ratioGlaze,
+    ratio_other: ratioOther,
+    surface_rating: int(fd, "surface_rating", 1, 5),
+    cone: int(fd, "cone", -22, 14),
+    effect_description: effect,
+    reason: str(fd, "reason", 1000),
+    source_url: sourceUrl,
+    verification_status: oneOf(str(fd, "verification_status"), EVIDENCE) ?? "unverified",
+  });
+  if (error) return fail(dbMessage(error, copy));
+  revalidatePath("/", "layout");
+  return done(copy.admin.savedMsg);
+}
+
+export async function deletePairing(id: string, glazeId: string): Promise<void> {
+  if (!(await requireEditorAction()) || !isUuid(id) || !isUuid(glazeId)) return;
+  const supabase = await createClient();
+  await supabase.from("glaze_pairings").delete().eq("id", id);
+  revalidatePath("/", "layout");
 }
