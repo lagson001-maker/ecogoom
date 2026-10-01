@@ -161,7 +161,7 @@ export function FilterForm({
         <Checkbox name="mine" value="1" label={t.myGlazesOnly} defaultChecked={f.mine} disabled={!signedIn} />
         <Checkbox name="tested" value="1" label={t.personalTested} defaultChecked={f.tested} disabled={!signedIn} />
       </div>
-      <div className="sticky bottom-0 -mx-1 flex gap-2 bg-surface px-1 py-2">
+      <div className="sticky -bottom-4 -mx-1 flex gap-2 bg-surface px-1 pt-2 pb-6">
         <button type="submit" className={buttonClass("primary", "md", "flex-1")}>
           {copy.common.apply}
         </button>
