@@ -94,7 +94,34 @@ export interface Glaze {
   manufacturer_notes: string | null;
   official_url: string | null;
   image_path: string | null;
+  /** Manufacturer-recommended coats; null = no statement recorded. */
+  coats_min: number | null;
+  coats_max: number | null;
+  application_notes: string | null;
+  /** Manufacturer-hosted image, hotlinked with credit, never copied. */
+  image_url: string | null;
+  image_credit: string | null;
   active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/** A single glaze on one clay body at one firing, with provenance. */
+export interface GlazeClayResult {
+  id: string;
+  glaze_id: string;
+  clay_color: ClayColor;
+  clay_body_text: string | null;
+  cone: number | null;
+  atmosphere: Atmosphere | null;
+  coats: number | null;
+  result_description: string;
+  image_url: string | null;
+  image_credit: string | null;
+  source_id: string | null;
+  source_url: string | null;
+  verification_status: VerificationStatus;
+  created_by: string | null;
   created_at: string;
   updated_at: string;
 }

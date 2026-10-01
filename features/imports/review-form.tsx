@@ -14,6 +14,7 @@ import { approveImport, type ApproveState } from "./actions";
 import { useCopy } from "@/lib/i18n/client";
 import { COLOR_TAGS, CONES, EFFECT_TAGS, SURFACE_TAGS, vocab } from "@/lib/vocabulary";
 import type { ImportDraft, LayerInput } from "@/types/domain";
+import { coneName } from "@/lib/cones";
 
 export function ReviewForm({
   draft,
@@ -84,7 +85,7 @@ export function ReviewForm({
                 <option value="">{copy.common.unknown}</option>
                 {CONES.map((c) => (
                   <option key={c} value={c}>
-                    {c < 0 ? `0${Math.abs(c)}` : c}
+                    {coneName(c)}
                   </option>
                 ))}
               </Select>

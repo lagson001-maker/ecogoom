@@ -13,6 +13,7 @@ import { uploadImage, validateImage } from "@/features/media/image-upload";
 import { useCopy } from "@/lib/i18n/client";
 import { COLOR_CHIP_HEX, COLOR_TAGS, CONES, vocab } from "@/lib/vocabulary";
 import type { GlazeOption } from "@/features/recipes/layer-editor";
+import { coneName } from "@/lib/cones";
 
 export function AskForm({
   userId,
@@ -128,7 +129,7 @@ export function AskForm({
               <option value="">{copy.filters.any}</option>
               {CONES.map((c) => (
                 <option key={c} value={c}>
-                  {c < 0 ? `0${Math.abs(c)}` : c}
+                  {coneName(c)}
                 </option>
               ))}
             </Select>

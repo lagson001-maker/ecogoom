@@ -13,6 +13,7 @@ import { saveExperiment } from "./actions";
 import { useCopy } from "@/lib/i18n/client";
 import { CONES, EFFECT_TAGS, RESULT_TAGS, vocab } from "@/lib/vocabulary";
 import type { ExperimentWithLayers } from "@/types/domain";
+import { coneName } from "@/lib/cones";
 
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -57,7 +58,7 @@ export function ExperimentForm({ experiment, glazes }: { experiment: ExperimentW
                 <option value="">{copy.common.unknown}</option>
                 {CONES.map((c) => (
                   <option key={c} value={c}>
-                    {c < 0 ? `0${Math.abs(c)}` : c}
+                    {coneName(c)}
                   </option>
                 ))}
               </Select>

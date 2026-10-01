@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import { Plus } from "lucide-react";
 import { EmptyState, PageHeader } from "@/components/ui/primitives";
 import { LinkButton } from "@/components/ui/button";
-import { GlazeCard, GlazeGrid } from "@/features/inventory/glaze-card";
+import { GlazeAZ } from "@/features/catalog/glaze-az";
 import { GlazeFilters } from "@/features/inventory/glaze-filters";
 import { getViewer } from "@/lib/data/auth";
-import { listBrands, listGlazes, listSeries } from "@/lib/data/catalog";
+import { getClayResults, listBrands, listGlazes, listSeries } from "@/lib/data/catalog";
 import { getInventoryGlazeIds } from "@/lib/data/personal";
 import { getCopy } from "@/lib/i18n/server";
 
@@ -26,13 +26,13 @@ export default async function GlazeLibraryPage({ searchParams }: PageProps<"/gla
     listSeries(),
     getInventoryGlazeIds(viewer.userId),
   ]);
-  const ownedSet = new Set(owned);
+  const clayResults = await getClayResults(glazes.map((g) => g.id));
 
   return (
     <>
       <PageHeader
         title={copy.glaze.library}
-        subtitle={`${copy.glaze.librarySubtitle} ${copy.inventory.swatchNote}`}
+        subtitle={`${copy.glaze.librarySubtitle} ${copy.catalog.azHint}`}
         actions={
           viewer.isEditor && (
             <LinkButton href="/admin/glazes/new" variant="outline">
@@ -45,11 +45,13 @@ export default async function GlazeLibraryPage({ searchParams }: PageProps<"/gla
       {glazes.length === 0 ? (
         <EmptyState title={copy.glaze.noMatch} description={copy.discover.emptyHint} />
       ) : (
-        <GlazeGrid>
-          {glazes.map((g) => (
-            <GlazeCard key={g.id} glaze={g} owned={ownedSet.has(g.id)} signedIn={Boolean(viewer.userId)} />
-          ))}
-        </GlazeGrid>
+        <GlazeAZ
+          glazes={glazes}
+          clayResults={clayResults}
+          owned={new Set(owned)}
+          signedIn={Boolean(viewer.userId)}
+          copy={copy}
+        />
       )}
     </>
   );

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowUpRight, Pencil } from "lucide-react";
@@ -10,10 +9,11 @@ import { RecipeCard, RecipeGrid } from "@/features/recipes/recipe-card";
 import { Swatch } from "@/features/recipes/stack";
 import { ExperimentCard } from "@/features/lab/experiment-card";
 import { getViewer } from "@/lib/data/auth";
-import { getGlazeBySlug, getGlazeUsage, type NeighborCount } from "@/lib/data/catalog";
+import { getClayResults, getGlazeBySlug, getGlazeUsage, type NeighborCount } from "@/lib/data/catalog";
+import { ClayResultList } from "@/features/catalog/clay-results";
+import { GlazeImage } from "@/features/catalog/glaze-image";
 import { getExperimentsUsingGlaze, getInventoryGlazeIds } from "@/lib/data/personal";
 import { getSavedRecipeIds } from "@/lib/data/recipes";
-import { publicObjectUrl } from "@/lib/storage";
 import { getCopy } from "@/lib/i18n/server";
 import { vocab } from "@/lib/vocabulary";
 
@@ -30,12 +30,15 @@ export default async function GlazePage({ params }: PageProps<"/glazes/[slug]">)
   const t = copy.glaze;
   const v = vocab(copy);
 
-  const [usage, owned, experiments, saved] = await Promise.all([
+  const [usage, owned, experiments, saved, clayResults] = await Promise.all([
     getGlazeUsage(glaze.id),
     getInventoryGlazeIds(viewer.userId),
     getExperimentsUsingGlaze(viewer.userId, glaze.id),
     getSavedRecipeIds(viewer.userId),
+    getClayResults([glaze.id]),
   ]);
+  const celsius = v.celsius(glaze.cone_min, glaze.cone_max);
+  const coats = v.coats(glaze.coats_min, glaze.coats_max);
   const signedIn = Boolean(viewer.userId);
 
   return (
@@ -51,22 +54,7 @@ export default async function GlazePage({ params }: PageProps<"/glazes/[slug]">)
       </nav>
 
       <div className="grid gap-6 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] md:gap-10">
-        <div>
-          <div className="relative aspect-square overflow-hidden rounded-card border border-line" style={{ background: glaze.swatch_hex ?? "#d9cbb7" }}>
-            {glaze.image_path ? (
-              <Image
-                src={publicObjectUrl("public-glaze-assets", glaze.image_path)}
-                alt={t.productImage(`${glaze.brand.name} ${glaze.name}`)}
-                fill
-                sizes="(min-width: 768px) 35vw, 100vw"
-                className="object-cover"
-              />
-            ) : (
-              <div className="absolute inset-0 bg-gradient-to-br from-white/25 via-transparent to-black/20" aria-hidden />
-            )}
-          </div>
-          <p className="mt-2 text-xs text-muted">{copy.inventory.swatchNote}</p>
-        </div>
+        <GlazeImage glaze={glaze} copy={copy} />
 
         <div>
           <p className="text-sm font-medium uppercase tracking-wide text-muted">
@@ -100,7 +88,13 @@ export default async function GlazePage({ params }: PageProps<"/glazes/[slug]">)
                 <Fact label={t.colorTags}>{v.tags(glaze.color_tags) || "—"}</Fact>
                 <Fact label={t.finish}>{glaze.finish ? v.tag(glaze.finish) : copy.common.unknown}</Fact>
                 <Fact label={copy.recipe.opacity}>{glaze.opacity ? v.opacity(glaze.opacity) : copy.common.unknown}</Fact>
-                <Fact label={copy.recipe.cone}>{v.coneLabel(glaze.cone_min, glaze.cone_max)}</Fact>
+                <Fact label={copy.catalog.firing}>
+                  {v.coneLabel(glaze.cone_min, glaze.cone_max)}
+                  {celsius && <span className="text-muted"> · {celsius}</span>}
+                </Fact>
+                <Fact label={copy.catalog.recommendedCoats}>
+                  {coats ?? <span className="text-muted">{copy.catalog.noStatement}</span>}
+                </Fact>
                 <Fact label={t.foodSafeClaim}>
                   {glaze.manufacturer_food_safe_claim === null
                     ? t.foodSafeNone
@@ -113,6 +107,11 @@ export default async function GlazePage({ params }: PageProps<"/glazes/[slug]">)
             <p className="mt-2 text-xs text-muted">{copy.safety.layeredFoodSafety}</p>
           </Section>
 
+          {glaze.application_notes && (
+            <Section title={copy.catalog.applicationNotes}>
+              <p className="text-ink-soft">{glaze.application_notes}</p>
+            </Section>
+          )}
           {glaze.manufacturer_notes && (
             <Section title={t.manufacturerNotes}>
               <p className="text-ink-soft">{glaze.manufacturer_notes}</p>
@@ -130,6 +129,10 @@ export default async function GlazePage({ params }: PageProps<"/glazes/[slug]">)
           )}
         </div>
       </div>
+
+      <Section title={copy.catalog.onClayBodies}>
+        <ClayResultList results={clayResults.get(glaze.id) ?? []} copy={copy} />
+      </Section>
 
       <div className="grid gap-x-10 md:grid-cols-2">
         <Neighbors title={t.popularAbove} items={usage.above} empty={t.notEnoughData} />

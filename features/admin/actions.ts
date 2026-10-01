@@ -9,12 +9,15 @@ import { slugify } from "@/lib/utils";
 import { OPACITIES } from "@/lib/vocabulary";
 import { getCopy } from "@/lib/i18n/server";
 import type { Messages } from "@/lib/i18n";
-import type { Role, SourceType, VerificationStatus } from "@/types/domain";
+import type { Atmosphere, ClayColor, Role, SourceType, VerificationStatus } from "@/types/domain";
 
 async function requireEditorAction(): Promise<string | null> {
   const viewer = await getViewer();
   return viewer.userId && viewer.isEditor ? viewer.userId : null;
 }
+
+/** Hotlinked images must be https; anything else is dropped rather than stored. */
+const httpsUrl = (u: string | null) => (u && /^https:\/\/\S+$/.test(u) ? u : null);
 
 const done = (message: string): ActionState => ({ ok: true, message });
 const fail = (message: string): ActionState => ({ ok: false, message });
@@ -94,9 +97,17 @@ export async function saveGlaze(_prev: ActionState, fd: FormData): Promise<Actio
     manufacturer_food_safe_claim: foodSafe === "yes" ? true : foodSafe === "no" ? false : null,
     manufacturer_notes: str(fd, "manufacturer_notes", 4000),
     official_url: str(fd, "official_url", 1000),
+    coats_min: int(fd, "coats_min", 1, 10),
+    coats_max: int(fd, "coats_max", 1, 10),
+    application_notes: str(fd, "application_notes", 2000),
+    image_url: httpsUrl(str(fd, "image_url", 1000)),
+    image_credit: str(fd, "image_credit", 200),
     active: id ? bool(fd, "active") : true,
   };
 
+  if (record.coats_min !== null && record.coats_max !== null && record.coats_min > record.coats_max) {
+    [record.coats_min, record.coats_max] = [record.coats_max, record.coats_min];
+  }
   if (id && isUuid(id)) {
     const { error } = await supabase.from("glazes").update(record).eq("id", id);
     if (error) return fail(dbMessage(error, copy));
@@ -152,4 +163,49 @@ export async function setUserRole(fd: FormData): Promise<void> {
   const supabase = await createClient();
   await supabase.from("profiles").update({ role }).eq("id", id);
   revalidatePath("/admin/users");
+}
+
+// --- glaze results on clay bodies ------------------------------------------------
+
+const CLAY_COLORS: ClayColor[] = ["white", "buff", "speckled", "brown", "red", "dark", "porcelain", "other"];
+const ATMOSPHERE_VALUES: Atmosphere[] = ["oxidation", "reduction", "neutral", "wood", "soda", "salt", "raku", "unknown"];
+
+export async function saveClayResult(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const copy = await getCopy();
+  if (!(await requireEditorAction())) return fail(copy.errors.unauthorized);
+  const glazeId = str(fd, "glaze_id");
+  const clayColor = oneOf(str(fd, "clay_color"), CLAY_COLORS);
+  const description = str(fd, "result_description", 2000);
+  const rawSource = str(fd, "source_url", 1000);
+  const sourceUrl = rawSource && /^https?:\/\/\S+$/.test(rawSource) ? rawSource : null;
+  if (!isUuid(glazeId) || !clayColor || !description) return fail(copy.catalog.clayResultRequired);
+  // Provenance is required: a result without a source is not recorded.
+  if (!sourceUrl) return fail(copy.catalog.sourceRequired);
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("glaze_clay_results").insert({
+    glaze_id: glazeId,
+    clay_color: clayColor,
+    clay_body_text: str(fd, "clay_body_text", 120),
+    cone: int(fd, "cone", -22, 14),
+    atmosphere: oneOf(str(fd, "atmosphere"), ATMOSPHERE_VALUES),
+    coats: int(fd, "coats", 1, 10),
+    result_description: description,
+    image_url: httpsUrl(str(fd, "image_url", 1000)),
+    image_credit: str(fd, "image_credit", 200),
+    source_url: sourceUrl,
+    verification_status: oneOf(str(fd, "verification_status"), EVIDENCE) ?? "unverified",
+  });
+  if (error) return fail(dbMessage(error, copy));
+  revalidatePath("/glazes", "layout");
+  revalidatePath(`/admin/glazes/${glazeId}`);
+  return done(copy.admin.savedMsg);
+}
+
+export async function deleteClayResult(id: string, glazeId: string): Promise<void> {
+  if (!(await requireEditorAction()) || !isUuid(id) || !isUuid(glazeId)) return;
+  const supabase = await createClient();
+  await supabase.from("glaze_clay_results").delete().eq("id", id);
+  revalidatePath("/glazes", "layout");
+  revalidatePath(`/admin/glazes/${glazeId}`);
 }

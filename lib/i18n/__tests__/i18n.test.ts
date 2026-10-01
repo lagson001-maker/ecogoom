@@ -40,3 +40,26 @@ describe("Vietnamese vocabulary", () => {
     expect(vocab(getMessages("en")).tag("great_break")).toBe("great break");
   });
 });
+
+describe("cones", () => {
+  const vi = vocab(getMessages("vi"));
+  const en = vocab(getMessages("en"));
+
+  it("writes low-fire cones with a leading zero", () => {
+    expect(en.coneValue(-6)).toBe("Cone 06");
+    expect(en.coneLabel(-6, -4)).toBe("Cone 06–04");
+  });
+
+  it("shows Orton °C equivalents only where a value is confirmed", () => {
+    expect(vi.celsius(5, 6)).toBe("≈1186–1222 °C");
+    expect(vi.celsius(10)).toBe("≈1285 °C");
+    expect(vi.celsius(11)).toBeNull();
+    expect(vi.celsius(null, null)).toBeNull();
+  });
+
+  it("formats recommended coats", () => {
+    expect(vi.coats(2, 3)).toBe("2–3 lượt");
+    expect(en.coats(2, 2)).toBe("2 coats");
+    expect(en.coats(null, null)).toBeNull();
+  });
+});

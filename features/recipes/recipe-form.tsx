@@ -11,6 +11,7 @@ import { saveRecipe } from "./actions";
 import { useCopy } from "@/lib/i18n/client";
 import { COLOR_TAGS, CONES, EFFECT_TAGS, OPACITIES, SURFACE_TAGS, vocab } from "@/lib/vocabulary";
 import type { LayerInput, Recipe } from "@/types/domain";
+import { coneName } from "@/lib/cones";
 
 export type RecipeFormValues = Partial<Recipe> & { layers: LayerInput[] };
 
@@ -97,7 +98,7 @@ export function RecipeForm({
                 <option value="">{copy.common.unknown}</option>
                 {CONES.map((c) => (
                   <option key={c} value={c}>
-                    {c < 0 ? `0${Math.abs(c)}` : c}
+                    {coneName(c)}
                   </option>
                 ))}
               </Select>

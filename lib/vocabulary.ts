@@ -15,6 +15,7 @@ import type {
 } from "@/types/domain";
 import type { DesiredSurface, MovementPreference, RiskTolerance } from "@/types/recommendation";
 import type { Messages } from "@/lib/i18n";
+import { coneCelsius, coneName } from "@/lib/cones";
 
 export const COLOR_TAGS = [
   "black", "white", "cream", "beige", "tan", "brown", "amber", "honey", "rust", "red",
@@ -151,17 +152,7 @@ export function humanizeTag(tag: string): string {
   return tag.replace(/_/g, " ");
 }
 
-export function coverageLabel(area: CoverageArea, percent: number | null): string {
-  const base = COVERAGE_AREAS.find((c) => c.value === area)?.label ?? area;
-  return percent && area !== "full" ? `${base} (~${percent}%)` : base;
-}
 
-export function coneLabel(min: number | null, max: number | null): string {
-  if (min === null && max === null) return "Cone ?";
-  if (min === max || max === null) return `Cone ${min}`;
-  if (min === null) return `Cone ${max}`;
-  return `Cone ${min}–${max}`;
-}
 
 /**
  * The vocabulary above with display labels in the reader's language. Values
@@ -170,7 +161,7 @@ export function coneLabel(min: number | null, max: number | null): string {
 export function vocab(m: Messages) {
   const v = m.vocab;
   const tag = (t: string) => v.tags[t] ?? humanizeTag(t);
-  const cone = (n: number | null) => (n === null ? v.coneUnknown : v.cone(String(n)));
+  const cone = (n: number | null) => (n === null ? v.coneUnknown : v.cone(coneName(n)));
   return {
     ATMOSPHERES: ATMOSPHERES.map((a) => ({ ...a, label: v.atmosphere[a.value] })),
     CLAY_COLORS: CLAY_COLORS.map((c) => ({ ...c, label: v.clayColor[c.value] })),
@@ -193,7 +184,19 @@ export function vocab(m: Messages) {
       if (min === null && max === null) return v.coneUnknown;
       if (min === max || max === null) return cone(min);
       if (min === null) return cone(max);
-      return v.cone(`${min}–${max}`);
+      return v.cone(`${coneName(min)}–${coneName(max)}`);
+    },
+    /** "≈1186–1222 °C" for a cone range, or null when no equivalent is known. */
+    celsius(min: number | null, max: number | null = min): string | null {
+      const lo = coneCelsius(min ?? max);
+      const hi = coneCelsius(max ?? min);
+      if (lo === null && hi === null) return null;
+      if (lo === null || hi === null || lo === hi) return v.celsius(String(lo ?? hi));
+      return v.celsius(`${lo}–${hi}`);
+    },
+    coats(min: number | null, max: number | null): string | null {
+      if (min === null && max === null) return null;
+      return v.coats(min === null || max === null || min === max ? String(min ?? max) : `${min}–${max}`);
     },
     coneValue: cone,
     coverageLabel(area: CoverageArea, percent: number | null): string {

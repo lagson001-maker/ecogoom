@@ -2,6 +2,7 @@ import { Checkbox, Field, Input, Select, Textarea } from "@/components/ui/form";
 import { getCopy } from "@/lib/i18n/server";
 import { COLOR_TAGS, CONES, GLAZE_TYPES, OPACITIES, vocab } from "@/lib/vocabulary";
 import type { Brand, GlazeSeries, GlazeWithBrand } from "@/types/domain";
+import { coneName } from "@/lib/cones";
 
 export async function GlazeFields({
   glaze,
@@ -21,7 +22,7 @@ export async function GlazeFields({
         <option value="">?</option>
         {CONES.map((c) => (
           <option key={c} value={c}>
-            {c < 0 ? `0${Math.abs(c)}` : c}
+            {coneName(c)}
           </option>
         ))}
       </Select>
@@ -117,10 +118,27 @@ export async function GlazeFields({
             <option value="no">{g.statesNotSafe}</option>
           </Select>
         </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label={g.coatsMin} htmlFor="g-coats-min" hint={g.coatsHint}>
+            <Input id="g-coats-min" name="coats_min" type="number" inputMode="numeric" min={1} max={10} defaultValue={glaze?.coats_min ?? ""} />
+          </Field>
+          <Field label={g.coatsMax} htmlFor="g-coats-max">
+            <Input id="g-coats-max" name="coats_max" type="number" inputMode="numeric" min={1} max={10} defaultValue={glaze?.coats_max ?? ""} />
+          </Field>
+        </div>
         <Field label={g.officialUrl} htmlFor="g-url" className="sm:col-span-2">
           <Input id="g-url" name="official_url" type="url" defaultValue={glaze?.official_url ?? ""} />
         </Field>
+        <Field label={g.imageUrl} htmlFor="g-img" hint={g.imageUrlHint} className="sm:col-span-2">
+          <Input id="g-img" name="image_url" type="url" placeholder="https://…" defaultValue={glaze?.image_url ?? ""} />
+        </Field>
+        <Field label={g.imageCredit} htmlFor="g-credit" className="sm:col-span-2">
+          <Input id="g-credit" name="image_credit" placeholder={g.imageCreditPlaceholder} defaultValue={glaze?.image_credit ?? ""} />
+        </Field>
       </div>
+      <Field label={copy.catalog.applicationNotes} htmlFor="g-app">
+        <Textarea id="g-app" name="application_notes" defaultValue={glaze?.application_notes ?? ""} rows={2} />
+      </Field>
       <Field label={copy.glaze.manufacturerNotes} htmlFor="g-notes">
         <Textarea id="g-notes" name="manufacturer_notes" defaultValue={glaze?.manufacturer_notes ?? ""} rows={3} />
       </Field>

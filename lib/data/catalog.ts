@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { GLAZE_JOIN, getRecipesUsingGlaze } from "./recipes";
-import type { Brand, GlazeSeries, GlazeWithBrand, RecipeSummary } from "@/types/domain";
+import type { Brand, GlazeClayResult, GlazeSeries, GlazeWithBrand, RecipeSummary, Source } from "@/types/domain";
 
 export interface GlazeFilters {
   q?: string | null;
@@ -73,6 +73,26 @@ export async function getGlazeById(id: string): Promise<GlazeWithBrand | null> {
   const { data, error } = await supabase.from("glazes").select(GLAZE_JOIN).eq("id", id).maybeSingle();
   if (error) throw error;
   return (data as GlazeWithBrand | null) ?? null;
+}
+
+export type ClayResultWithSource = GlazeClayResult & { source: Pick<Source, "id" | "name" | "url"> | null };
+
+const CLAY_RESULT_SELECT = "*, source:sources(id,name,url)";
+
+/** Documented results of each glaze on different clay bodies, grouped by glaze id. */
+export async function getClayResults(glazeIds: string[]): Promise<Map<string, ClayResultWithSource[]>> {
+  const out = new Map<string, ClayResultWithSource[]>();
+  if (glazeIds.length === 0) return out;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("glaze_clay_results")
+    .select(CLAY_RESULT_SELECT)
+    .in("glaze_id", glazeIds)
+    .order("cone", { ascending: true, nullsFirst: false })
+    .order("clay_color");
+  if (error) throw error;
+  for (const r of (data ?? []) as ClayResultWithSource[]) out.set(r.glaze_id, [...(out.get(r.glaze_id) ?? []), r]);
+  return out;
 }
 
 export interface NeighborCount {

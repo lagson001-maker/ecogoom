@@ -4,6 +4,7 @@ import { getCopy } from "@/lib/i18n/server";
 import { COLOR_CHIP_HEX, COLOR_TAGS, CONES, EFFECT_TAGS, SURFACE_TAGS, vocab } from "@/lib/vocabulary";
 import type { DiscoverFilters } from "@/lib/discover-params";
 import type { Brand, GlazeSeries, GlazeWithBrand } from "@/types/domain";
+import { coneName } from "@/lib/cones";
 
 export interface FilterOptions {
   brands: Brand[];
@@ -73,7 +74,7 @@ export async function FilterForm({
             <option value="">{t.any}</option>
             {CONES.map((c) => (
               <option key={c} value={c}>
-                {c < 0 ? `0${Math.abs(c)}` : c}
+                {coneName(c)}
               </option>
             ))}
           </Select>
