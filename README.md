@@ -139,7 +139,7 @@ npx supabase start          # áp dụng migrations + seed, in ra API URL và pu
 npx supabase db reset       # xoá dữ liệu local và chạy lại migrations + seed
 ```
 
-Điền `NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321` và publishable key được in ra vào `.env.local`. Local stack tắt email confirmation nên đăng ký xong là đăng nhập luôn. Nếu mạng chặn registry mặc định (ECR), dùng `SUPABASE_INTERNAL_IMAGE_REGISTRY=docker.io npx supabase start`.
+Điền `NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:55421` và publishable key được in ra vào `.env.local`. Local stack tắt email confirmation nên đăng ký xong là đăng nhập luôn. Nếu mạng chặn registry mặc định (ECR), dùng `SUPABASE_INTERNAL_IMAGE_REGISTRY=docker.io npx supabase start`.
 
 ### Seed data
 

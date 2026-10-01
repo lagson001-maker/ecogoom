@@ -18,7 +18,7 @@ const nextConfig: NextConfig = {
       ...(supabaseHost && !supabaseHost.endsWith(".supabase.co")
         ? [{ protocol: "https" as const, hostname: supabaseHost, pathname: "/storage/v1/object/**" }]
         : []),
-      { protocol: "http", hostname: "127.0.0.1", port: "54321", pathname: "/storage/v1/object/**" },
+      { protocol: "http", hostname: "127.0.0.1", port: "55421", pathname: "/storage/v1/object/**" },
     ],
   },
   experimental: {
