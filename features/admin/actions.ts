@@ -1,0 +1,150 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { getViewer } from "@/lib/data/auth";
+import { bool, int, isUuid, oneOf, str, tags, type ActionState } from "@/lib/forms";
+import { slugify } from "@/lib/utils";
+import { OPACITIES } from "@/lib/vocabulary";
+import { copy } from "@/lib/i18n";
+import type { Role, SourceType, VerificationStatus } from "@/types/domain";
+
+async function requireEditorAction(): Promise<string | null> {
+  const viewer = await getViewer();
+  return viewer.userId && viewer.isEditor ? viewer.userId : null;
+}
+
+const done = (message = "Saved."): ActionState => ({ ok: true, message });
+const fail = (message: string): ActionState => ({ ok: false, message });
+const dbMessage = (e: { code?: string; message: string }) =>
+  e.code === "23505" ? "That name or slug already exists." : e.code === "42501" ? copy.errors.unauthorized : e.message;
+
+// --- brands & series -----------------------------------------------------------
+
+export async function saveBrand(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  if (!(await requireEditorAction())) return fail(copy.errors.unauthorized);
+  const id = str(fd, "id");
+  const name = str(fd, "name", 120);
+  if (!name) return fail("Name is required.");
+  const record = {
+    name,
+    slug: slugify(str(fd, "slug", 80) ?? name),
+    website_url: str(fd, "website_url", 500),
+    country: str(fd, "country", 60),
+    description: str(fd, "description", 2000),
+    active: id ? bool(fd, "active") : true,
+  };
+  const supabase = await createClient();
+  const { error } = id && isUuid(id)
+    ? await supabase.from("brands").update(record).eq("id", id)
+    : await supabase.from("brands").insert(record);
+  if (error) return fail(dbMessage(error));
+  revalidatePath("/admin/brands");
+  revalidatePath("/brands");
+  return done();
+}
+
+export async function saveSeries(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  if (!(await requireEditorAction())) return fail(copy.errors.unauthorized);
+  const brandId = str(fd, "brand_id");
+  const name = str(fd, "name", 120);
+  if (!isUuid(brandId) || !name) return fail("Brand and name are required.");
+  const supabase = await createClient();
+  const { error } = await supabase.from("glaze_series").insert({ brand_id: brandId, name, slug: slugify(name) });
+  if (error) return fail(dbMessage(error));
+  revalidatePath("/admin/brands");
+  return done("Series added.");
+}
+
+// --- glazes ----------------------------------------------------------------------
+
+export async function saveGlaze(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  if (!(await requireEditorAction())) return fail(copy.errors.unauthorized);
+  const id = str(fd, "id");
+  const name = str(fd, "name", 120);
+  const brandId = str(fd, "brand_id");
+  if (!name || !isUuid(brandId)) return fail("Brand and name are required.");
+  const seriesId = str(fd, "series_id");
+  const swatch = str(fd, "swatch_hex", 7);
+  const foodSafe = str(fd, "manufacturer_food_safe_claim");
+
+  const supabase = await createClient();
+  const { data: brand } = await supabase.from("brands").select("slug").eq("id", brandId).single();
+  const record = {
+    brand_id: brandId,
+    series_id: isUuid(seriesId) ? seriesId : null,
+    product_code: str(fd, "product_code", 40),
+    name,
+    slug: slugify(str(fd, "slug", 100) ?? `${brand?.slug ?? ""}-${name}`),
+    glaze_type: slugify(str(fd, "glaze_type", 40) ?? "glaze").replace(/-/g, "_"),
+    base_color: str(fd, "base_color", 120),
+    swatch_hex: swatch && /^#[0-9a-fA-F]{6}$/.test(swatch) ? swatch : null,
+    color_family: str(fd, "color_family", 40)?.toLowerCase() ?? null,
+    color_tags: tags(fd, "color_tags"),
+    finish: str(fd, "finish", 60),
+    opacity: oneOf(str(fd, "opacity"), OPACITIES),
+    cone_min: int(fd, "cone_min", -22, 14),
+    cone_max: int(fd, "cone_max", -22, 14),
+    // Only record what the manufacturer actually states. Empty = unknown.
+    manufacturer_food_safe_claim: foodSafe === "yes" ? true : foodSafe === "no" ? false : null,
+    manufacturer_notes: str(fd, "manufacturer_notes", 4000),
+    official_url: str(fd, "official_url", 1000),
+    active: id ? bool(fd, "active") : true,
+  };
+
+  if (id && isUuid(id)) {
+    const { error } = await supabase.from("glazes").update(record).eq("id", id);
+    if (error) return fail(dbMessage(error));
+    revalidatePath(`/admin/glazes/${id}`);
+    revalidatePath("/glazes");
+    return done();
+  }
+  const { data, error } = await supabase.from("glazes").insert(record).select("id").single();
+  if (error) return fail(dbMessage(error));
+  revalidatePath("/glazes");
+  redirect(`/admin/glazes/${data.id}`);
+}
+
+// --- sources -----------------------------------------------------------------------
+
+const SOURCE_TYPES: SourceType[] = ["manufacturer", "community", "personal", "imported", "unknown"];
+const EVIDENCE: VerificationStatus[] = ["unverified", "community_reported", "manufacturer_documented", "personally_tested", "repeated_test"];
+
+export async function saveSource(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const userId = await requireEditorAction();
+  if (!userId) return fail(copy.errors.unauthorized);
+  const id = str(fd, "id");
+  const name = str(fd, "name", 200);
+  if (!name) return fail("Name is required.");
+  const record = {
+    name,
+    url: str(fd, "url", 1000),
+    author: str(fd, "author", 200),
+    source_date: str(fd, "source_date", 10),
+    source_type: oneOf(str(fd, "source_type"), SOURCE_TYPES) ?? "unknown",
+    evidence_level: oneOf(str(fd, "evidence_level"), EVIDENCE) ?? "unverified",
+    notes: str(fd, "notes", 4000),
+  };
+  const supabase = await createClient();
+  const { error } = id && isUuid(id)
+    ? await supabase.from("sources").update(record).eq("id", id)
+    : await supabase.from("sources").insert({ ...record, created_by: userId });
+  if (error) return fail(dbMessage(error));
+  revalidatePath("/admin/sources");
+  revalidatePath("/sources");
+  return done();
+}
+
+// --- users -------------------------------------------------------------------------
+
+export async function setUserRole(fd: FormData): Promise<void> {
+  const viewer = await getViewer();
+  if (!viewer.isAdmin) return;
+  const id = str(fd, "id");
+  const role = oneOf(str(fd, "role"), ["user", "editor", "admin"] as Role[]);
+  if (!isUuid(id) || !role || id === viewer.userId) return; // never demote yourself by accident
+  const supabase = await createClient();
+  await supabase.from("profiles").update({ role }).eq("id", id);
+  revalidatePath("/admin/users");
+}
