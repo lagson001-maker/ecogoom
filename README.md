@@ -82,7 +82,7 @@ Yêu cầu: Node.js ≥ 20.9 (khuyến nghị 22), một Supabase project (hoste
 ```bash
 npm install
 cp .env.example .env.local      # điền URL + publishable key
-npm run dev                     # http://localhost:3000
+npm run dev                     # http://localhost:4310
 ```
 
 Các script:
@@ -120,7 +120,7 @@ Nếu thiếu env Supabase, app vẫn chạy và hiển thị hướng dẫn c�
 
 4. **Auth**: Authentication → URL Configuration
    - *Site URL*: URL Netlify của bạn (vd. `https://glazestack.netlify.app`)
-   - *Redirect URLs*: thêm `https://<site>/auth/confirm` và `http://localhost:3000/auth/confirm`
+   - *Redirect URLs*: thêm `https://<site>/auth/confirm` và `http://localhost:4310/auth/confirm`
    - Email/password và Magic Link đều dùng route `/auth/confirm` (hỗ trợ cả `token_hash` lẫn PKCE `code`).
 
 5. **Tạo admin đầu tiên**: đăng ký tài khoản trong app, rồi chạy trong SQL Editor:
