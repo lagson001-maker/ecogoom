@@ -69,7 +69,21 @@ function PairingList({ items, copy }: { items: OrientedPairing[]; copy: Messages
                 </span>
               )}
             </div>
-            <p className="mt-1.5 text-ink-soft">{p.effect_description}</p>
+            <div className="mt-1.5 flex gap-2.5">
+              {p.image_url && (
+                <a href={p.image_url} target="_blank" rel="noreferrer nofollow" className="shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- hotlinked manufacturer test tile */}
+                  <img
+                    src={p.image_url}
+                    alt={p.effect_description}
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                    className="h-20 w-20 rounded-lg border border-line object-cover"
+                  />
+                </a>
+              )}
+              <p className="text-ink-soft">{p.effect_description}</p>
+            </div>
             {p.reason && <p className="mt-1 text-xs text-muted">{t.why}: {p.reason}</p>}
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs">
               <VerificationBadge status={p.verification_status} short />

@@ -142,6 +142,8 @@ export interface GlazePairing {
   cone: number | null;
   effect_description: string;
   reason: string | null;
+  image_url: string | null;
+  image_credit: string | null;
   source_id: string | null;
   source_url: string | null;
   verification_status: VerificationStatus;

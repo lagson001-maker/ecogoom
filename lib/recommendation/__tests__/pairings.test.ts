@@ -21,6 +21,8 @@ function pairing(over: Partial<GlazePairing>): GlazePairing {
     cone: 6,
     effect_description: "x",
     reason: null,
+    image_url: null,
+    image_credit: null,
     source_id: null,
     source_url: "https://example.com",
     verification_status: "unverified",

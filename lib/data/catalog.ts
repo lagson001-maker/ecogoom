@@ -79,19 +79,31 @@ export type ClayResultWithSource = GlazeClayResult & { source: Pick<Source, "id"
 
 const CLAY_RESULT_SELECT = "*, source:sources(id,name,url)";
 
+/** Keeps `in.(…)` filters well under URL length limits when a page shows the whole catalog. */
+function chunks<T>(list: T[], size = 50): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < list.length; i += size) out.push(list.slice(i, i + size));
+  return out;
+}
+
 /** Documented results of each glaze on different clay bodies, grouped by glaze id. */
 export async function getClayResults(glazeIds: string[]): Promise<Map<string, ClayResultWithSource[]>> {
   const out = new Map<string, ClayResultWithSource[]>();
   if (glazeIds.length === 0) return out;
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("glaze_clay_results")
-    .select(CLAY_RESULT_SELECT)
-    .in("glaze_id", glazeIds)
-    .order("cone", { ascending: true, nullsFirst: false })
-    .order("clay_color");
-  if (error) throw error;
-  for (const r of (data ?? []) as ClayResultWithSource[]) out.set(r.glaze_id, [...(out.get(r.glaze_id) ?? []), r]);
+  const pages = await Promise.all(
+    chunks(glazeIds).map(async (ids) => {
+      const { data, error } = await supabase
+        .from("glaze_clay_results")
+        .select(CLAY_RESULT_SELECT)
+        .in("glaze_id", ids)
+        .order("cone", { ascending: true, nullsFirst: false })
+        .order("clay_color");
+      if (error) throw error;
+      return (data ?? []) as ClayResultWithSource[];
+    }),
+  );
+  for (const r of pages.flat()) out.set(r.glaze_id, [...(out.get(r.glaze_id) ?? []), r]);
   return out;
 }
 
@@ -157,19 +169,27 @@ export async function getGlazeOptions(): Promise<
 export async function getPairings(glazeIds: string[]): Promise<{ pairings: GlazePairing[]; glazes: Map<string, GlazeWithBrand> }> {
   if (glazeIds.length === 0) return { pairings: [], glazes: new Map() };
   const supabase = await createClient();
-  const list = glazeIds.join(",");
-  const { data, error } = await supabase
-    .from("glaze_pairings")
-    .select("*")
-    .or(`glaze_id.in.(${list}),other_glaze_id.in.(${list})`);
-  if (error) throw error;
-  const pairings = (data ?? []) as GlazePairing[];
+  const pages = await Promise.all(
+    chunks(glazeIds).map(async (part) => {
+      const list = part.join(",");
+      const { data, error } = await supabase
+        .from("glaze_pairings")
+        .select("*")
+        .or(`glaze_id.in.(${list}),other_glaze_id.in.(${list})`);
+      if (error) throw error;
+      return (data ?? []) as GlazePairing[];
+    }),
+  );
+  const pairings = [...new Map(pages.flat().map((p) => [p.id, p])).values()];
   const ids = [...new Set(pairings.flatMap((p) => [p.glaze_id, p.other_glaze_id]))];
   const glazes = new Map<string, GlazeWithBrand>();
-  if (ids.length) {
-    const { data: g, error: ge } = await supabase.from("glazes").select(GLAZE_JOIN).in("id", ids);
-    if (ge) throw ge;
-    for (const x of (g ?? []) as GlazeWithBrand[]) glazes.set(x.id, x);
-  }
+  const glazePages = await Promise.all(
+    chunks(ids).map(async (part) => {
+      const { data, error } = await supabase.from("glazes").select(GLAZE_JOIN).in("id", part);
+      if (error) throw error;
+      return (data ?? []) as GlazeWithBrand[];
+    }),
+  );
+  for (const x of glazePages.flat()) glazes.set(x.id, x);
   return { pairings, glazes };
 }
