@@ -1,5 +1,6 @@
 "use client";
 
+import { StatefulForm } from "@/components/ui/stateful-form";
 import { useActionState } from "react";
 import { Field, FormMessage, Input, Select, Textarea } from "@/components/ui/form";
 import { Card } from "@/components/ui/primitives";
@@ -63,7 +64,7 @@ export function RecipeForm({
   const fe = state?.fieldErrors ?? {};
 
   return (
-    <form action={action} className="grid gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+    <StatefulForm action={action} className="grid gap-5 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
       {initial.id && <input type="hidden" name="id" value={initial.id} />}
       {parentRecipeId && <input type="hidden" name="parent_recipe_id" value={parentRecipeId} />}
 
@@ -244,6 +245,6 @@ export function RecipeForm({
           </SubmitButton>
         </div>
       </div>
-    </form>
+    </StatefulForm>
   );
 }

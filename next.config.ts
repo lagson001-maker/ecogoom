@@ -10,6 +10,8 @@ const supabaseHost = (() => {
 
 const nextConfig: NextConfig = {
   images: {
+    // Only for a local Supabase stack (supabase start) during development.
+    dangerouslyAllowLocalIP: supabaseHost === "127.0.0.1" || supabaseHost === "localhost",
     // Supabase Storage (public + signed URLs). Custom domains come from the env var.
     remotePatterns: [
       { protocol: "https", hostname: "*.supabase.co", pathname: "/storage/v1/object/**" },

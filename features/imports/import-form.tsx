@@ -1,5 +1,6 @@
 "use client";
 
+import { StatefulForm } from "@/components/ui/stateful-form";
 import { useActionState, useState } from "react";
 import { Field, FormMessage, Input, Select, Textarea } from "@/components/ui/form";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -25,7 +26,7 @@ export function ImportForm({ userId, aiConfigured }: { userId: string; aiConfigu
   }, null);
 
   return (
-    <form action={action} className="flex flex-col gap-4">
+    <StatefulForm action={action} className="flex flex-col gap-4">
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label={t.url} htmlFor="im-url" error={state?.fieldErrors?.source_url}>
           <Input id="im-url" name="source_url" type="url" inputMode="url" placeholder="https://…" />
@@ -71,6 +72,6 @@ export function ImportForm({ userId, aiConfigured }: { userId: string; aiConfigu
       <SubmitButton size="lg" pendingLabel={aiConfigured ? "Extracting…" : "Saving…"}>
         {t.submit}
       </SubmitButton>
-    </form>
+    </StatefulForm>
   );
 }

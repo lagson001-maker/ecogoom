@@ -1,5 +1,6 @@
 "use client";
 
+import { StatefulForm } from "@/components/ui/stateful-form";
 import Link from "next/link";
 import { useActionState } from "react";
 import { AlertTriangle } from "lucide-react";
@@ -34,7 +35,7 @@ export function ReviewForm({
   const fe = state?.fieldErrors ?? {};
 
   return (
-    <form action={action} className="grid gap-5 lg:grid-cols-2">
+    <StatefulForm action={action} className="grid gap-5 lg:grid-cols-2">
       <input type="hidden" name="draft_id" value={draft.id} />
 
       <div className="flex flex-col gap-5">
@@ -202,6 +203,6 @@ export function ReviewForm({
           </SubmitButton>
         </div>
       </div>
-    </form>
+    </StatefulForm>
   );
 }

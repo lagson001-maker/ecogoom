@@ -1,5 +1,6 @@
 "use client";
 
+import { StatefulForm } from "@/components/ui/stateful-form";
 import { ImagePlus, Sparkles, X } from "lucide-react";
 import { useActionState, useEffect, useId, useRef, useState } from "react";
 import { Checkbox, ChipCheckbox, ChipRadio, Field, Input, Select, Textarea } from "@/components/ui/form";
@@ -68,7 +69,7 @@ export function AskForm({
 
   return (
     <>
-      <form action={action} className="flex flex-col gap-4">
+      <StatefulForm action={action} className="flex flex-col gap-4">
         <Field label="What look are you after?" htmlFor={`${id}-text`}>
           <Textarea id={`${id}-text`} name="text" defaultValue={defaultText} placeholder={t.placeholder} rows={3} maxLength={1000} />
         </Field>
@@ -228,7 +229,7 @@ export function AskForm({
           <Sparkles className="h-4 w-4" aria-hidden />
           {t.submit}
         </SubmitButton>
-      </form>
+      </StatefulForm>
 
       <div ref={resultsRef} className="scroll-mt-20">
         {state?.ok && <AskResults outcome={state} />}

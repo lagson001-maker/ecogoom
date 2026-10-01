@@ -1,5 +1,6 @@
 "use client";
 
+import { StatefulForm } from "@/components/ui/stateful-form";
 import { useActionState, useState } from "react";
 import { Field, FormMessage, Input } from "@/components/ui/form";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -40,7 +41,7 @@ export function LoginForm({ next }: { next: string }) {
         ))}
       </div>
 
-      <form action={action} className="flex flex-col gap-4">
+      <StatefulForm action={action} className="flex flex-col gap-4">
         <input type="hidden" name="mode" value={mode} />
         <input type="hidden" name="next" value={next} />
         <Field label={t.email} htmlFor="email" error={state?.fieldErrors?.email}>
@@ -62,7 +63,7 @@ export function LoginForm({ next }: { next: string }) {
         <SubmitButton size="lg" pendingLabel="Please wait…">
           {mode === "signin" ? t.signIn : mode === "signup" ? t.signUp : t.magicLink}
         </SubmitButton>
-      </form>
+      </StatefulForm>
     </div>
   );
 }

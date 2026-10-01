@@ -63,7 +63,7 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[slug]"
       <div className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-10">
         {/* Hero */}
         <div className="space-y-3">
-          <div className="relative aspect-[4/5] overflow-hidden rounded-card border border-line bg-surface-2">
+          <div className="relative aspect-[4/3] overflow-hidden rounded-card border border-line bg-surface-2 lg:aspect-[4/5]">
             <RecipeVisual recipe={recipe} sizes="(min-width: 1024px) 40vw, 100vw" priority />
           </div>
           {!recipe.primary_image && <p className="text-xs text-muted">{copy.common.illustration}</p>}

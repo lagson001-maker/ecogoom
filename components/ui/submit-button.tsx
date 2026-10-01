@@ -4,6 +4,7 @@ import { useFormStatus } from "react-dom";
 import { Loader2 } from "lucide-react";
 import type { ComponentProps } from "react";
 import { Button } from "./button";
+import { useStatefulFormPending } from "./stateful-form";
 
 export function SubmitButton({
   children,
@@ -11,7 +12,9 @@ export function SubmitButton({
   confirmMessage,
   ...props
 }: ComponentProps<typeof Button> & { pendingLabel?: string; confirmMessage?: string }) {
-  const { pending } = useFormStatus();
+  const status = useFormStatus();
+  const transitionPending = useStatefulFormPending();
+  const pending = status.pending || transitionPending;
   return (
     <Button
       {...props}

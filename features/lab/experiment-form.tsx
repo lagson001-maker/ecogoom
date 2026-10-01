@@ -1,5 +1,6 @@
 "use client";
 
+import { StatefulForm } from "@/components/ui/stateful-form";
 import { Star } from "lucide-react";
 import { useActionState } from "react";
 import { Checkbox, ChipRadio, Field, FormMessage, Input, Select, Textarea } from "@/components/ui/form";
@@ -27,7 +28,7 @@ export function ExperimentForm({ experiment, glazes }: { experiment: ExperimentW
   const e = experiment;
 
   return (
-    <form action={action} className="grid gap-5 lg:grid-cols-2">
+    <StatefulForm action={action} className="grid gap-5 lg:grid-cols-2">
       <input type="hidden" name="id" value={e.id} />
       <div className="flex flex-col gap-5">
         <Panel title="Test setup">
@@ -181,6 +182,6 @@ export function ExperimentForm({ experiment, glazes }: { experiment: ExperimentW
           </div>
         </div>
       </div>
-    </form>
+    </StatefulForm>
   );
 }
