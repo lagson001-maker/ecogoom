@@ -2,6 +2,7 @@
 // SCORING_WEIGHTS, and reported 0..100. Keep UI code out of here.
 
 import {
+  BONUSES,
   COLOR_FIELD_WEIGHTS,
   DESIRED_COLOR_WEIGHTS,
   ENGINE_CONFIG,
@@ -152,7 +153,12 @@ export function scoreRecipe(
     weights.evidence * evidence +
     weights.personal * personalPart;
 
-  const total = Math.round(clamp01(weighted - penalty) * 1000) / 10;
+  const brandBonus =
+    constraints.preferredBrandIds.length > 0 && recipe.layers.some((l) => constraints.preferredBrandIds.includes(l.glaze.brand_id))
+      ? BONUSES.preferredBrand
+      : 0;
+
+  const total = Math.round(clamp01(weighted + brandBonus - penalty) * 1000) / 10;
 
   return {
     breakdown: { visual, color, availability, firing, evidence, personal: personalPart, penalty, total },

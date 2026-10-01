@@ -112,6 +112,19 @@ describe("scoring", () => {
   });
 });
 
+describe("brand preference", () => {
+  it("nudges recipes from preferred brands up", () => {
+    const mayco = glaze("norse-blue", { brand_id: "brand-mayco" });
+    const a = recipe([mayco], { dominant_colors: ["blue"] });
+    const b = recipe([blueRutile], { dominant_colors: ["blue"] });
+    const intent = parseTextIntent("blue");
+    const c = constraints({ preferredBrandIds: ["brand-mayco"] });
+    expect(scoreRecipe(a, intent, c, personal()).breakdown.total).toBeGreaterThan(
+      scoreRecipe(b, intent, c, personal()).breakdown.total,
+    );
+  });
+});
+
 describe("intent parser", () => {
   it("maps Vietnamese phrases to tags with longest match first", () => {
     const i = parseTextIntent("men xanh rêu loang nâu");

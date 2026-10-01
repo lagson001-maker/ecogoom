@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/env";
 import type { Profile } from "@/types/domain";
@@ -17,6 +18,8 @@ const anonymous: Viewer = { userId: null, email: null, profile: null, isEditor: 
 
 /** Current user + profile, memoized per request. Never throws. */
 export const getViewer = cache(async (): Promise<Viewer> => {
+  // Every page is per-user (RLS), so never prerender at build time.
+  await connection();
   if (!isSupabaseConfigured()) return anonymous;
   try {
     const supabase = await createClient();
@@ -46,6 +49,6 @@ export async function requireUser(next = "/"): Promise<Viewer & { userId: string
 
 export async function requireEditor(): Promise<Viewer & { userId: string }> {
   const viewer = await requireUser("/admin");
-  if (!viewer.isEditor) redirect("/admin/forbidden");
+  if (!viewer.isEditor) redirect("/forbidden");
   return viewer;
 }

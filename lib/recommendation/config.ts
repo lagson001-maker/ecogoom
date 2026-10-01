@@ -49,3 +49,8 @@ export const PENALTIES = {
   runnyHistory: 0.1,
   runRiskOverTolerancePerStep: 0.08,
 } as const;
+
+export const BONUSES = {
+  /** Added when a recipe uses at least one preferred brand. */
+  preferredBrand: 0.04,
+} as const;
