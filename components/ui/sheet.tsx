@@ -3,6 +3,7 @@
 import { X } from "lucide-react";
 import { useEffect, useRef, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { useCopy } from "@/lib/i18n/client";
 
 /**
  * Native <dialog>: bottom sheet on mobile, side panel on desktop.
@@ -23,6 +24,7 @@ export function Sheet({
   footer?: ReactNode;
   side?: "right" | "center";
 }) {
+  const copy = useCopy();
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -53,7 +55,7 @@ export function Sheet({
             type="button"
             onClick={onClose}
             className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft hover:bg-surface-2"
-            aria-label="Close"
+            aria-label={copy.common.close}
           >
             <X className="h-5 w-5" />
           </button>

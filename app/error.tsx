@@ -3,9 +3,10 @@
 import { AlertTriangle } from "lucide-react";
 import { Button, LinkButton } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/primitives";
-import { copy } from "@/lib/i18n";
+import { useCopy } from "@/lib/i18n/client";
 
 export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  const copy = useCopy();
   return (
     <EmptyState
       icon={<AlertTriangle className="h-8 w-8" />}
@@ -13,12 +14,12 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
       description={
         <>
           {copy.errors.unavailable}
-          {error.digest && <span className="mt-2 block text-xs text-muted">Ref: {error.digest}</span>}
+          {error.digest && <span className="mt-2 block text-xs text-muted">{copy.errors.ref(error.digest)}</span>}
         </>
       }
       actions={
         <>
-          <Button onClick={reset}>Try again</Button>
+          <Button onClick={reset}>{copy.errors.tryAgain}</Button>
           <LinkButton href="/" variant="outline">
             {copy.nav.discover}
           </LinkButton>

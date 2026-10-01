@@ -4,7 +4,7 @@ import { Check, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useOptimistic, useTransition } from "react";
 import { toggleInventory } from "./actions";
-import { copy } from "@/lib/i18n";
+import { useCopy } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
 
 export function InventoryButton({
@@ -18,6 +18,7 @@ export function InventoryButton({
   signedIn: boolean;
   size?: "sm" | "md";
 }) {
+  const copy = useCopy();
   const router = useRouter();
   const [pending, start] = useTransition();
   const [optimistic, setOptimistic] = useOptimistic(owned);
@@ -46,7 +47,7 @@ export function InventoryButton({
       )}
     >
       {optimistic ? <Check className="h-4 w-4" aria-hidden /> : <Plus className="h-4 w-4" aria-hidden />}
-      {optimistic ? copy.inventory.inMyGlazes : size === "sm" ? "Add" : copy.inventory.add}
+      {optimistic ? copy.inventory.inMyGlazes : size === "sm" ? copy.inventory.addShort : copy.inventory.add}
     </button>
   );
 }

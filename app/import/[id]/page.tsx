@@ -12,12 +12,16 @@ import { getImportDraft } from "@/lib/data/sources";
 import { createClient } from "@/lib/supabase/server";
 import { matchGlaze } from "@/lib/imports/match";
 import { isUuid } from "@/lib/forms";
-import { copy } from "@/lib/i18n";
+import { getCopy } from "@/lib/i18n/server";
 import type { LayerInput } from "@/types/domain";
 
-export const metadata: Metadata = { title: copy.import.review };
+export async function generateMetadata(): Promise<Metadata> {
+  const copy = await getCopy();
+  return { title: copy.import.review };
+}
 
 export default async function ReviewImportPage({ params }: PageProps<"/import/[id]">) {
+  const copy = await getCopy();
   const { id } = await params;
   const viewer = await requireUser(`/import/${id}`);
   if (!isUuid(id)) notFound();
@@ -44,7 +48,7 @@ export default async function ReviewImportPage({ params }: PageProps<"/import/[i
       coverage_area: l.coverage_area ?? "full",
       coverage_percent: null,
       application_method: null,
-      notes: match ? null : `Imported as: ${l.glaze_name}`,
+      notes: match ? null : copy.import.importedAs(l.glaze_name),
     });
   }
 
@@ -52,10 +56,10 @@ export default async function ReviewImportPage({ params }: PageProps<"/import/[i
     return (
       <>
         <PageHeader title={copy.import.review} />
-        <Alert title={`This import is ${draft.status}.`}>
-          {draft.recipe_id ? "The recipe was created from it." : null}{" "}
+        <Alert title={copy.import.isStatus(copy.import.status[draft.status])}>
+          {draft.recipe_id ? copy.import.recipeCreated : null}{" "}
           <Link href="/import" className="underline">
-            Back to imports
+            {copy.import.backToImports}
           </Link>
         </Alert>
       </>
@@ -66,10 +70,10 @@ export default async function ReviewImportPage({ params }: PageProps<"/import/[i
     <>
       <PageHeader
         title={copy.import.review}
-        subtitle="Check every field. Nothing is published until you approve."
+        subtitle={copy.import.reviewHint}
         actions={
           <form action={discardImportDraft.bind(null, draft.id)}>
-            <SubmitButton variant="outline" confirmMessage="Discard this import?">
+            <SubmitButton variant="outline" confirmMessage={copy.import.confirmDiscard}>
               {copy.import.discard}
             </SubmitButton>
           </form>
@@ -78,19 +82,19 @@ export default async function ReviewImportPage({ params }: PageProps<"/import/[i
 
       <Card className="mb-5 grid gap-4 p-4 sm:grid-cols-[1fr_auto]">
         <div className="min-w-0 space-y-2 text-sm">
-          <p className="font-semibold">Original input</p>
+          <p className="font-semibold">{copy.import.originalInput}</p>
           {draft.source_url && (
             <a href={draft.source_url} target="_blank" rel="noreferrer nofollow" className="inline-flex items-center gap-1 break-all text-glaze hover:underline">
               {draft.source_url} <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
             </a>
           )}
           {draft.raw_text && <p className="max-h-48 overflow-y-auto whitespace-pre-wrap rounded-lg bg-surface-2 p-3 text-ink-soft">{draft.raw_text}</p>}
-          {draft.notes && <p className="text-muted">Notes: {draft.notes}</p>}
+          {draft.notes && <p className="text-muted">{copy.import.notes}: {draft.notes}</p>}
         </div>
         {screenshotUrl && (
           <a href={screenshotUrl} target="_blank" rel="noreferrer">
             {/* eslint-disable-next-line @next/next/no-img-element -- short-lived signed URL */}
-            <img src={screenshotUrl} alt="Imported screenshot" className="max-h-56 rounded-lg border border-line object-contain" />
+            <img src={screenshotUrl} alt={copy.import.screenshotAlt} className="max-h-56 rounded-lg border border-line object-contain" />
           </a>
         )}
       </Card>

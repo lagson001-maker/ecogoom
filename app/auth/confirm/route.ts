@@ -1,6 +1,7 @@
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getCopy } from "@/lib/i18n/server";
 
 /** Handles email confirmation and magic links (token_hash or PKCE code). */
 export async function GET(request: NextRequest) {
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
   } else if (code) {
     ({ error } = await supabase.auth.exchangeCodeForSession(code));
   } else {
-    error = { message: "Invalid or expired link." };
+    error = { message: (await getCopy()).auth.invalidLink };
   }
 
   if (error) {

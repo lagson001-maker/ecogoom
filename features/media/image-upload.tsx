@@ -6,18 +6,24 @@ import { useId, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { ALLOWED_IMAGE_TYPES, MAX_IMAGE_BYTES, fileExtension } from "@/lib/storage";
 import { registerMedia } from "./actions";
-import { copy } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
+import { useCopy } from "@/lib/i18n/client";
 import type { Bucket, MediaOwnerType } from "@/types/domain";
 
-export function validateImage(file: File): string | null {
+export function validateImage(file: File, copy: Messages): string | null {
   if (!ALLOWED_IMAGE_TYPES.includes(file.type)) return copy.errors.invalidImage;
   if (file.size > MAX_IMAGE_BYTES) return copy.errors.invalidImage;
   return null;
 }
 
 /** Uploads directly from the browser to Storage (user session + Storage RLS). */
-export async function uploadImage(file: File, bucket: Bucket, folder: string): Promise<{ path?: string; error?: string }> {
-  const invalid = validateImage(file);
+export async function uploadImage(
+  file: File,
+  bucket: Bucket,
+  folder: string,
+  copy: Messages,
+): Promise<{ path?: string; error?: string }> {
+  const invalid = validateImage(file, copy);
   if (invalid) return { error: invalid };
   const path = `${folder}/${crypto.randomUUID()}.${fileExtension(file.type)}`;
   const { error } = await createClient().storage.from(bucket).upload(path, file, { contentType: file.type, upsert: false });
@@ -30,7 +36,7 @@ export function ImageUpload({
   ownerId,
   bucket,
   folder,
-  label = copy.lab.uploadResult,
+  label,
   revalidate,
 }: {
   ownerType: MediaOwnerType;
@@ -41,6 +47,7 @@ export function ImageUpload({
   label?: string;
   revalidate?: string;
 }) {
+  const copy = useCopy();
   const id = useId();
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
@@ -53,7 +60,7 @@ export function ImageUpload({
     setBusy(true);
     setError(null);
     for (const file of files) {
-      const up = await uploadImage(file, bucket, folder);
+      const up = await uploadImage(file, bucket, folder, copy);
       if (up.error || !up.path) {
         setError(up.error ?? copy.errors.uploadFailed);
         break;
@@ -76,8 +83,8 @@ export function ImageUpload({
         className="flex min-h-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-card border border-dashed border-line-strong bg-surface px-4 py-5 text-sm text-ink-soft hover:bg-surface-2 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus"
       >
         {busy ? <Loader2 className="h-6 w-6 animate-spin" aria-hidden /> : <ImagePlus className="h-6 w-6" aria-hidden />}
-        <span className="font-medium text-ink">{busy ? "Uploading…" : label}</span>
-        <span className="text-xs text-muted">JPEG, PNG, WebP, AVIF · max 10 MB</span>
+        <span className="font-medium text-ink">{busy ? copy.common.uploading : (label ?? copy.lab.uploadResult)}</span>
+        <span className="text-xs text-muted">{copy.common.imageLimits}</span>
       </label>
       <input
         ref={input}

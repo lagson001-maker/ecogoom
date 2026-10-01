@@ -11,11 +11,9 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { LayerEditor, type GlazeOption } from "@/features/recipes/layer-editor";
 import { TagPicker } from "@/features/recipes/tag-picker";
 import { approveImport, type ApproveState } from "./actions";
-import { copy } from "@/lib/i18n";
-import { ATMOSPHERES, CLAY_COLORS, COLOR_TAGS, CONES, EFFECT_TAGS, SOURCE_TYPES, SURFACE_TAGS } from "@/lib/vocabulary";
+import { useCopy } from "@/lib/i18n/client";
+import { COLOR_TAGS, CONES, EFFECT_TAGS, SURFACE_TAGS, vocab } from "@/lib/vocabulary";
 import type { ImportDraft, LayerInput } from "@/types/domain";
-
-const t = copy.import;
 
 export function ReviewForm({
   draft,
@@ -30,6 +28,10 @@ export function ReviewForm({
   glazes: GlazeOption[];
   isEditor: boolean;
 }) {
+  const copy = useCopy();
+  const t = copy.import;
+  const f = copy.form;
+  const { ATMOSPHERES, CLAY_COLORS, SOURCE_TYPES } = vocab(copy);
   const [state, action] = useActionState<ApproveState, FormData>(approveImport, null);
   const x = draft.extracted ?? {};
   const fe = state?.fieldErrors ?? {};
@@ -40,36 +42,36 @@ export function ReviewForm({
 
       <div className="flex flex-col gap-5">
         <Card className="flex flex-col gap-4 p-4 sm:p-5">
-          <h2 className="font-serif text-lg font-semibold">Recipe</h2>
-          <Field label="Title" htmlFor="rv-title" error={fe.title}>
+          <h2 className="font-serif text-lg font-semibold">{t.recipe}</h2>
+          <Field label={f.title} htmlFor="rv-title" error={fe.title}>
             <Input id="rv-title" name="title" defaultValue={x.title ?? ""} required />
           </Field>
           {unmatched.length > 0 && (
-            <Alert tone="warn" icon={<AlertTriangle className="h-4 w-4" />} title="Not found in the glaze database">
-              {unmatched.join(", ")} — pick the right glaze below
+            <Alert tone="warn" icon={<AlertTriangle className="h-4 w-4" />} title={t.notFound}>
+              {unmatched.join(", ")} — {t.pickBelow}
               {isEditor ? (
                 <>
-                  {" "}or{" "}
+                  {" "}{t.or}{" "}
                   <Link href="/admin/glazes/new" className="underline" target="_blank">
-                    add it to the library
+                    {t.addToLibrary}
                   </Link>
                 </>
               ) : (
-                " or ask an editor to add it"
+                ` ${t.askEditor}`
               )}
-              . GlazeStack never creates glazes automatically.
+              . {t.neverAuto}
             </Alert>
           )}
           <LayerEditor glazes={glazes} initial={layers} error={fe.layers} />
-          <Field label="Result description" htmlFor="rv-result">
+          <Field label={f.resultDescription} htmlFor="rv-result">
             <Textarea id="rv-result" name="result_description" defaultValue={x.notes ?? ""} rows={3} />
           </Field>
         </Card>
         <Card className="flex flex-col gap-4 p-4 sm:p-5">
-          <TagPicker name="dominant_colors" legend="Dominant colors" vocabulary={COLOR_TAGS} selected={x.color_tags?.slice(0, 2) ?? []} swatches />
-          <TagPicker name="color_tags" legend="Secondary colors" vocabulary={COLOR_TAGS} selected={x.color_tags?.slice(2) ?? []} swatches />
-          <TagPicker name="effect_tags" legend="Effects" vocabulary={EFFECT_TAGS} selected={x.effect_tags ?? []} />
-          <TagPicker name="surface_tags" legend="Surface" vocabulary={SURFACE_TAGS} selected={x.surface_tags ?? []} />
+          <TagPicker name="dominant_colors" legend={f.dominantColors} vocabulary={COLOR_TAGS} selected={x.color_tags?.slice(0, 2) ?? []} swatches />
+          <TagPicker name="color_tags" legend={f.secondaryColors} vocabulary={COLOR_TAGS} selected={x.color_tags?.slice(2) ?? []} swatches />
+          <TagPicker name="effect_tags" legend={copy.recipe.effects} vocabulary={EFFECT_TAGS} selected={x.effect_tags ?? []} />
+          <TagPicker name="surface_tags" legend={copy.recipe.surface} vocabulary={SURFACE_TAGS} selected={x.surface_tags ?? []} />
         </Card>
       </div>
 
@@ -97,10 +99,10 @@ export function ReviewForm({
                 ))}
               </Select>
             </Field>
-            <Field label="Clay body" htmlFor="rv-clay">
+            <Field label={copy.filters.clay} htmlFor="rv-clay">
               <Input id="rv-clay" name="clay_body_text" defaultValue={x.clay_body ?? ""} />
             </Field>
-            <Field label="Clay color" htmlFor="rv-claycolor">
+            <Field label={f.clayColor} htmlFor="rv-claycolor">
               <Select id="rv-claycolor" name="clay_color" defaultValue="">
                 <option value="">{copy.common.unknown}</option>
                 {CLAY_COLORS.map((c) => (
@@ -145,10 +147,10 @@ export function ReviewForm({
             <Field label={t.author} htmlFor="rv-sauthor">
               <Input id="rv-sauthor" name="source_author" defaultValue={draft.source_author ?? x.source_author ?? ""} />
             </Field>
-            <Field label="Date" htmlFor="rv-sdate">
+            <Field label={f.date} htmlFor="rv-sdate">
               <Input id="rv-sdate" name="source_date" type="date" defaultValue={/^\d{4}-\d{2}-\d{2}$/.test(x.source_date ?? "") ? x.source_date! : ""} />
             </Field>
-            <Field label="Source type" htmlFor="rv-stype" className="col-span-2">
+            <Field label={t.sourceType} htmlFor="rv-stype" className="col-span-2">
               <Select id="rv-stype" name="source_type" defaultValue={draft.source_type}>
                 {Object.entries(SOURCE_TYPES).map(([v, l]) => (
                   <option key={v} value={v}>
@@ -159,10 +161,10 @@ export function ReviewForm({
             </Field>
           </div>
           {isEditor && (
-            <Field label="Visibility" htmlFor="rv-vis" hint="Public imports are created as drafts for review.">
+            <Field label={f.visibility} htmlFor="rv-vis" hint={t.visibilityHint}>
               <Select id="rv-vis" name="visibility" defaultValue="public">
-                <option value="public">Public (draft)</option>
-                <option value="private">Private</option>
+                <option value="public">{t.publicDraft}</option>
+                <option value="private">{t.private}</option>
               </Select>
             </Field>
           )}
@@ -198,7 +200,7 @@ export function ReviewForm({
 
         <div className="sticky bottom-20 z-10 flex flex-col gap-2 rounded-card border border-line bg-surface p-3 shadow-md md:bottom-4">
           {!state?.duplicates && <FormMessage state={state} />}
-          <SubmitButton size="lg" pendingLabel="Saving…">
+          <SubmitButton size="lg" pendingLabel={copy.common.saving}>
             {t.approve}
           </SubmitButton>
         </div>

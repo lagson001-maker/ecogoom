@@ -2,12 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { copy } from "@/lib/i18n";
+import { useCopy } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
 
-const t = copy.admin;
-
 export function AdminNav({ isAdmin }: { isAdmin: boolean }) {
+  const t = useCopy().admin;
   const pathname = usePathname();
   const items = [
     { href: "/admin", label: t.overview },
@@ -19,7 +18,7 @@ export function AdminNav({ isAdmin }: { isAdmin: boolean }) {
     ...(isAdmin ? [{ href: "/admin/users", label: t.users }] : []),
   ];
   return (
-    <nav aria-label="Admin" className="-mx-1 mb-6 flex gap-1 overflow-x-auto border-b border-line px-1">
+    <nav aria-label={t.title} className="-mx-1 mb-6 flex gap-1 overflow-x-auto border-b border-line px-1">
       {items.map((i) => {
         const active = i.href === "/admin" ? pathname === "/admin" : pathname.startsWith(i.href);
         return (

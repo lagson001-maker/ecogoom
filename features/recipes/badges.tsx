@@ -1,6 +1,9 @@
+"use client";
+
 import { AlertTriangle, BadgeCheck, CircleHelp, FlaskConical, Factory, Users, Waves } from "lucide-react";
 import { Badge, type Tone } from "@/components/ui/primitives";
-import { DINNERWARE, VERIFICATION, riskLevel } from "@/lib/vocabulary";
+import { useCopy } from "@/lib/i18n/client";
+import { riskLevel, vocab } from "@/lib/vocabulary";
 import type { DinnerwareSuitability, VerificationStatus } from "@/types/domain";
 
 const verificationIcon: Record<VerificationStatus, React.ReactNode> = {
@@ -21,7 +24,7 @@ const verificationTone: Record<VerificationStatus, Tone> = {
 
 /** Evidence level — always icon + text, never color alone. */
 export function VerificationBadge({ status, short }: { status: VerificationStatus; short?: boolean }) {
-  const v = VERIFICATION[status];
+  const v = vocab(useCopy()).VERIFICATION[status];
   return (
     <Badge tone={verificationTone[status]} icon={verificationIcon[status]} title={v.label}>
       {short ? v.short : v.label}
@@ -32,19 +35,20 @@ export function VerificationBadge({ status, short }: { status: VerificationStatu
 const riskTone = { low: "ok", medium: "warn", high: "danger", unknown: "neutral" } as const;
 
 export function RiskBadge({ label, value }: { label: string; value: number | null }) {
+  const v = vocab(useCopy());
   const level = riskLevel(value);
   return (
     <Badge
       tone={riskTone[level]}
       icon={level === "high" ? <AlertTriangle className="h-3.5 w-3.5" aria-hidden /> : <Waves className="h-3.5 w-3.5" aria-hidden />}
     >
-      {label}: {level === "unknown" ? "?" : level}
+      {label}: {level === "unknown" ? "?" : v.riskLevel(level)}
     </Badge>
   );
 }
 
 export function DinnerwareBadge({ value }: { value: DinnerwareSuitability }) {
-  const d = DINNERWARE[value];
+  const d = vocab(useCopy()).DINNERWARE[value];
   const tone: Tone = value === "verified" ? "ok" : value === "not_recommended" ? "danger" : value === "unknown" ? "neutral" : "glaze";
   return (
     <Badge tone={tone} title={d.hint}>
@@ -55,9 +59,11 @@ export function DinnerwareBadge({ value }: { value: DinnerwareSuitability }) {
 
 /** 0–5 meter with an explicit numeric/text label. */
 export function LevelMeter({ value, label }: { value: number | null; label: string }) {
+  const copy = useCopy();
+  const v = vocab(copy);
   const level = riskLevel(value);
   return (
-    <div className="flex items-center gap-2" aria-label={`${label}: ${value ?? "unknown"} of 5`}>
+    <div className="flex items-center gap-2" aria-label={copy.recipe.levelAria(label, value === null ? v.riskLevel("unknown") : String(value))}>
       <div className="flex gap-0.5" aria-hidden>
         {[1, 2, 3, 4, 5].map((i) => (
           <span
@@ -66,7 +72,7 @@ export function LevelMeter({ value, label }: { value: number | null; label: stri
           />
         ))}
       </div>
-      <span className="text-xs text-ink-soft">{value === null ? "unknown" : `${value}/5 · ${level}`}</span>
+      <span className="text-xs text-ink-soft">{value === null ? v.riskLevel("unknown") : `${value}/5 · ${v.riskLevel(level)}`}</span>
     </div>
   );
 }

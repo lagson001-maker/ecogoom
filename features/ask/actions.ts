@@ -5,7 +5,7 @@ import { runAsk, type AskOutcome } from "@/lib/ask/service";
 import { bool, int, isUuid, oneOf, str } from "@/lib/forms";
 import { isSafeStoragePath } from "@/lib/storage";
 import { ATMOSPHERES, COLOR_TAGS, DESIRED_SURFACES, MOVEMENT_PREFERENCES, RISK_TOLERANCES } from "@/lib/vocabulary";
-import { copy } from "@/lib/i18n";
+import { getCopy } from "@/lib/i18n/server";
 import type { RecommendationConstraints } from "@/types/recommendation";
 
 export type AskState = (AskOutcome & { ok: true }) | { ok: false; message: string } | null;
@@ -15,10 +15,11 @@ const colors = (fd: FormData, key: string) =>
   fd.getAll(key).filter((v): v is string => typeof v === "string" && (COLOR_TAGS as readonly string[]).includes(v));
 
 export async function askAction(_prev: AskState, fd: FormData): Promise<AskState> {
+  const copy = await getCopy();
   const viewer = await getViewer();
   const text = str(fd, "text", 1000) ?? "";
   const imagePath = str(fd, "image_path", 300);
-  if (!text && !imagePath) return { ok: false, message: "Describe what you want or add a reference image." };
+  if (!text && !imagePath) return { ok: false, message: copy.ask.needInput };
   if (imagePath && !isSafeStoragePath(imagePath)) return { ok: false, message: copy.errors.invalidImage };
 
   const onlyMine = bool(fd, "only_my_glazes");

@@ -1,12 +1,16 @@
+"use client";
+
 import Link from "next/link";
 import { AlertTriangle, Sparkles } from "lucide-react";
 import { RiskBadge, VerificationBadge } from "@/features/recipes/badges";
 import { RecipeVisual } from "@/features/recipes/recipe-card";
 import { MiniStack } from "@/features/recipes/stack";
-import { copy } from "@/lib/i18n";
+import { useCopy } from "@/lib/i18n/client";
+import { vocab } from "@/lib/vocabulary";
 import type { RecommendationCandidate } from "@/types/recommendation";
 
 export function ResultCard({ candidate, aiNote }: { candidate: RecommendationCandidate; aiNote?: string }) {
+  const copy = useCopy();
   const { recipe, reasons, warnings, score } = candidate;
   return (
     <article className="relative flex flex-col overflow-hidden rounded-card border border-line bg-surface shadow-sm sm:flex-row">
@@ -51,7 +55,7 @@ export function ResultCard({ candidate, aiNote }: { candidate: RecommendationCan
           <span className="text-xs text-muted">{copy.ask.evidence}:</span>
           <VerificationBadge status={recipe.verification_status} />
           <RiskBadge label={copy.recipe.runRisk} value={recipe.run_risk} />
-          {recipe.cone !== null && <span className="text-xs font-medium text-ink">Cone {recipe.cone}</span>}
+          {recipe.cone !== null && <span className="text-xs font-medium text-ink">{vocab(copy).coneValue(recipe.cone)}</span>}
         </div>
         {warnings.map((w) => (
           <p key={w} className="flex gap-1.5 text-xs text-warn">

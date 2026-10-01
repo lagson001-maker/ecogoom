@@ -9,11 +9,15 @@ import { deleteRecipe } from "@/features/recipes/actions";
 import { requireUser } from "@/lib/data/auth";
 import { getGlazeOptions } from "@/lib/data/catalog";
 import { getRecipeBySlug } from "@/lib/data/recipes";
-import { copy } from "@/lib/i18n";
+import { getCopy } from "@/lib/i18n/server";
 
-export const metadata: Metadata = { title: copy.editor.editRecipe };
+export async function generateMetadata(): Promise<Metadata> {
+  const copy = await getCopy();
+  return { title: copy.editor.editRecipe };
+}
 
 export default async function EditRecipePage({ params }: PageProps<"/recipes/[slug]/edit">) {
+  const copy = await getCopy();
   const { slug } = await params;
   const viewer = await requireUser(`/recipes/${slug}/edit`);
   const recipe = await getRecipeBySlug(slug);
@@ -25,11 +29,11 @@ export default async function EditRecipePage({ params }: PageProps<"/recipes/[sl
   if (!canEdit) {
     return (
       <Alert tone="danger" title={copy.errors.unauthorized}>
-        Community and manufacturer recipes are never edited in place.{" "}
+        {copy.editor.notEditable}{" "}
         <Link href={`/recipes/${recipe.slug}`} className="underline">
-          Create a variation
-        </Link>{" "}
-        instead.
+          {copy.recipe.createVariation}
+        </Link>
+        {copy.editor.notEditableAfter}
       </Alert>
     );
   }
@@ -49,7 +53,7 @@ export default async function EditRecipePage({ params }: PageProps<"/recipes/[sl
         actions={
           canDelete && (
             <form action={deleteRecipe.bind(null, recipe.id)}>
-              <SubmitButton variant="outline" className="text-danger" pendingLabel="Deleting…" confirmMessage="Delete permanently? This cannot be undone.">
+              <SubmitButton variant="outline" className="text-danger" pendingLabel={copy.common.deleting} confirmMessage={copy.common.confirmDelete}>
                 <Trash2 className="h-4 w-4" aria-hidden />
                 {copy.common.delete}
               </SubmitButton>

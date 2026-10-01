@@ -9,13 +9,17 @@ import { getViewer } from "@/lib/data/auth";
 import { getSource } from "@/lib/data/sources";
 import { getSavedRecipeIds } from "@/lib/data/recipes";
 import { isUuid } from "@/lib/forms";
-import { copy } from "@/lib/i18n";
-import { SOURCE_TYPES } from "@/lib/vocabulary";
+import { getCopy } from "@/lib/i18n/server";
+import { vocab } from "@/lib/vocabulary";
 import { formatDate } from "@/lib/utils";
 
-export const metadata: Metadata = { title: copy.sources.title };
+export async function generateMetadata(): Promise<Metadata> {
+  const copy = await getCopy();
+  return { title: copy.sources.title };
+}
 
 export default async function SourcePage({ params }: PageProps<"/sources/[id]">) {
+  const copy = await getCopy();
   const { id } = await params;
   if (!isUuid(id)) notFound();
   const [data, viewer] = await Promise.all([getSource(id), getViewer()]);
@@ -25,7 +29,7 @@ export default async function SourcePage({ params }: PageProps<"/sources/[id]">)
 
   return (
     <>
-      <nav aria-label="Breadcrumb" className="mb-3 text-sm text-muted">
+      <nav aria-label={copy.common.breadcrumb} className="mb-3 text-sm text-muted">
         <Link href="/sources" className="hover:underline">
           {copy.sources.title}
         </Link>
@@ -33,31 +37,31 @@ export default async function SourcePage({ params }: PageProps<"/sources/[id]">)
       <PageHeader title={source.name} subtitle={source.notes} />
       <Card className="max-w-2xl px-4 py-1">
         <dl>
-          <Fact label="Type">
-            <Badge>{SOURCE_TYPES[source.source_type]}</Badge>
+          <Fact label={copy.glaze.type}>
+            <Badge>{vocab(copy).SOURCE_TYPES[source.source_type]}</Badge>
           </Fact>
           <Fact label={copy.sources.evidence}>
             <VerificationBadge status={source.evidence_level} />
           </Fact>
-          <Fact label="Author">{source.author ?? copy.common.unknown}</Fact>
-          <Fact label="Source date">{source.source_date ? formatDate(source.source_date) : copy.common.unknown}</Fact>
-          <Fact label="Imported">{formatDate(source.imported_at)}</Fact>
+          <Fact label={copy.import.author}>{source.author ?? copy.common.unknown}</Fact>
+          <Fact label={copy.sources.date}>{source.source_date ? formatDate(source.source_date) : copy.common.unknown}</Fact>
+          <Fact label={copy.sources.imported}>{formatDate(source.imported_at)}</Fact>
           {source.url && (
             <Fact label="URL">
               <a href={source.url} target="_blank" rel="noreferrer nofollow" className="inline-flex items-center gap-1 break-all text-glaze hover:underline">
-                Open <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
+                {copy.sources.open} <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
               </a>
             </Fact>
           )}
         </dl>
       </Card>
       <p className="mt-2 max-w-2xl text-xs text-muted">
-        A single post or page is evidence, not proof. Results depend on clay, application and kiln.
+        {copy.sources.evidenceNote}
       </p>
 
       <Section title={`${copy.sources.recipesImported} (${recipes.length})`}>
         {recipes.length === 0 ? (
-          <EmptyState title="No visible recipes from this source." />
+          <EmptyState title={copy.sources.noRecipes} />
         ) : (
           <RecipeGrid>
             {recipes.map((r) => (

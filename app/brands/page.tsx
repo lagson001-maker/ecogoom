@@ -5,11 +5,15 @@ import { EmptyState, PageHeader } from "@/components/ui/primitives";
 import { LinkButton } from "@/components/ui/button";
 import { getViewer } from "@/lib/data/auth";
 import { countGlazesByBrand, listBrands, listSeries } from "@/lib/data/catalog";
-import { copy } from "@/lib/i18n";
+import { getCopy } from "@/lib/i18n/server";
 
-export const metadata: Metadata = { title: copy.nav.brands };
+export async function generateMetadata(): Promise<Metadata> {
+  const copy = await getCopy();
+  return { title: copy.nav.brands };
+}
 
 export default async function BrandsPage() {
+  const copy = await getCopy();
   const viewer = await getViewer();
   const [brands, counts, series] = await Promise.all([listBrands(), countGlazesByBrand(), listSeries()]);
 
@@ -17,7 +21,7 @@ export default async function BrandsPage() {
     <>
       <PageHeader
         title={copy.nav.brands}
-        subtitle="Glaze manufacturers and their product lines."
+        subtitle={copy.brands.subtitle}
         actions={
           viewer.isEditor && (
             <LinkButton href="/admin/brands" variant="outline">
@@ -27,7 +31,7 @@ export default async function BrandsPage() {
         }
       />
       {brands.length === 0 ? (
-        <EmptyState title="No brands yet." />
+        <EmptyState title={copy.brands.empty} />
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {brands.map((b) => {
@@ -40,7 +44,7 @@ export default async function BrandsPage() {
                   </Link>
                 </h2>
                 <p className="text-sm text-muted">
-                  {[b.country, `${counts.get(b.id) ?? 0} glazes`].filter(Boolean).join(" · ")}
+                  {[b.country, copy.common.glazes(counts.get(b.id) ?? 0)].filter(Boolean).join(" · ")}
                 </p>
                 {lines.length > 0 && (
                   <p className="mt-2 line-clamp-2 text-sm text-ink-soft">{lines.map((s) => s.name).join(", ")}</p>

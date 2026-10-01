@@ -8,19 +8,8 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { LayerEditor, type GlazeOption } from "./layer-editor";
 import { TagPicker } from "./tag-picker";
 import { saveRecipe } from "./actions";
-import { copy } from "@/lib/i18n";
-import {
-  ATMOSPHERES,
-  CLAY_COLORS,
-  COLOR_TAGS,
-  CONES,
-  DINNERWARE,
-  EFFECT_TAGS,
-  OPACITIES,
-  SOURCE_TYPES,
-  SURFACE_TAGS,
-  VERIFICATION,
-} from "@/lib/vocabulary";
+import { useCopy } from "@/lib/i18n/client";
+import { COLOR_TAGS, CONES, EFFECT_TAGS, OPACITIES, SURFACE_TAGS, vocab } from "@/lib/vocabulary";
 import type { LayerInput, Recipe } from "@/types/domain";
 
 export type RecipeFormValues = Partial<Recipe> & { layers: LayerInput[] };
@@ -35,13 +24,14 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
 }
 
 function LevelSelect({ name, label, value }: { name: string; label: string; value: number | null | undefined }) {
+  const copy = useCopy();
   return (
     <Field label={label} htmlFor={`rf-${name}`}>
       <Select id={`rf-${name}`} name={name} defaultValue={value?.toString() ?? ""}>
         <option value="">{copy.common.unknown}</option>
         {[0, 1, 2, 3, 4, 5].map((n) => (
           <option key={n} value={n}>
-            {n} — {["none", "very low", "low", "medium", "high", "extreme"][n]}
+            {n} — {copy.form.levels[n]}
           </option>
         ))}
       </Select>
@@ -60,6 +50,9 @@ export function RecipeForm({
   isEditor: boolean;
   parentRecipeId?: string | null;
 }) {
+  const copy = useCopy();
+  const f = copy.form;
+  const { ATMOSPHERES, CLAY_COLORS, DINNERWARE, SOURCE_TYPES, VERIFICATION, opacity } = vocab(copy);
   const [state, action] = useActionState(saveRecipe, null);
   const fe = state?.fieldErrors ?? {};
 
@@ -69,11 +62,11 @@ export function RecipeForm({
       {parentRecipeId && <input type="hidden" name="parent_recipe_id" value={parentRecipeId} />}
 
       <div className="flex flex-col gap-5">
-        <Panel title="Basics">
-          <Field label="Title" htmlFor="rf-title" error={fe.title}>
+        <Panel title={f.basics}>
+          <Field label={f.title} htmlFor="rf-title" error={fe.title}>
             <Input id="rf-title" name="title" defaultValue={initial.title ?? ""} required maxLength={200} />
           </Field>
-          <Field label="Short description" htmlFor="rf-desc">
+          <Field label={f.shortDescription} htmlFor="rf-desc">
             <Textarea id="rf-desc" name="description" defaultValue={initial.description ?? ""} rows={2} />
           </Field>
         </Panel>
@@ -83,16 +76,16 @@ export function RecipeForm({
         </Panel>
 
         <Panel title={copy.recipe.result}>
-          <Field label="Result description" htmlFor="rf-result">
+          <Field label={f.resultDescription} htmlFor="rf-result">
             <Textarea id="rf-result" name="result_description" defaultValue={initial.result_description ?? ""} rows={3} />
           </Field>
-          <Field label={copy.editor.predictionNotes} htmlFor="rf-pred" hint="What you expect, before firing.">
+          <Field label={copy.editor.predictionNotes} htmlFor="rf-pred" hint={f.predictionHint}>
             <Textarea id="rf-pred" name="prediction_notes" defaultValue={initial.prediction_notes ?? ""} rows={2} />
           </Field>
-          <TagPicker name="dominant_colors" legend="Dominant colors" vocabulary={COLOR_TAGS} selected={initial.dominant_colors ?? []} swatches />
-          <TagPicker name="color_tags" legend="Secondary colors" vocabulary={COLOR_TAGS} selected={initial.color_tags ?? []} swatches />
-          <TagPicker name="effect_tags" legend="Effects" vocabulary={EFFECT_TAGS} selected={initial.effect_tags ?? []} />
-          <TagPicker name="surface_tags" legend="Surface" vocabulary={SURFACE_TAGS} selected={initial.surface_tags ?? []} />
+          <TagPicker name="dominant_colors" legend={f.dominantColors} vocabulary={COLOR_TAGS} selected={initial.dominant_colors ?? []} swatches />
+          <TagPicker name="color_tags" legend={f.secondaryColors} vocabulary={COLOR_TAGS} selected={initial.color_tags ?? []} swatches />
+          <TagPicker name="effect_tags" legend={copy.recipe.effects} vocabulary={EFFECT_TAGS} selected={initial.effect_tags ?? []} />
+          <TagPicker name="surface_tags" legend={copy.recipe.surface} vocabulary={SURFACE_TAGS} selected={initial.surface_tags ?? []} />
         </Panel>
       </div>
 
@@ -120,10 +113,10 @@ export function RecipeForm({
               </Select>
             </Field>
           </div>
-          <Field label="Clay body" htmlFor="rf-clay">
-            <Input id="rf-clay" name="clay_body_text" defaultValue={initial.clay_body_text ?? ""} placeholder="e.g. B-Mix, speckled buff" />
+          <Field label={copy.filters.clay} htmlFor="rf-clay">
+            <Input id="rf-clay" name="clay_body_text" defaultValue={initial.clay_body_text ?? ""} placeholder={f.clayPlaceholder} />
           </Field>
-          <Field label="Clay color" htmlFor="rf-claycolor">
+          <Field label={f.clayColor} htmlFor="rf-claycolor">
             <Select id="rf-claycolor" name="clay_color" defaultValue={initial.clay_color ?? ""}>
               <option value="">{copy.common.unknown}</option>
               {CLAY_COLORS.map((c) => (
@@ -133,8 +126,8 @@ export function RecipeForm({
               ))}
             </Select>
           </Field>
-          <Field label="Application method" htmlFor="rf-app">
-            <Input id="rf-app" name="application_method" defaultValue={initial.application_method ?? ""} placeholder="brush, dip, spray…" />
+          <Field label={f.applicationMethod} htmlFor="rf-app">
+            <Input id="rf-app" name="application_method" defaultValue={initial.application_method ?? ""} placeholder={f.applicationPlaceholder} />
           </Field>
         </Panel>
 
@@ -150,31 +143,31 @@ export function RecipeForm({
               <option value="">{copy.common.unknown}</option>
               {OPACITIES.map((o) => (
                 <option key={o} value={o}>
-                  {o}
+                  {opacity(o)}
                 </option>
               ))}
             </Select>
           </Field>
         </Panel>
 
-        <Panel title="Evidence & publishing">
+        <Panel title={f.publishing}>
           {isEditor ? (
             <>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Visibility" htmlFor="rf-vis">
+                <Field label={f.visibility} htmlFor="rf-vis">
                   <Select id="rf-vis" name="visibility" defaultValue={initial.visibility ?? "public"}>
-                    <option value="public">Public</option>
-                    <option value="private">Private (personal)</option>
+                    <option value="public">{f.public}</option>
+                    <option value="private">{f.private}</option>
                   </Select>
                 </Field>
-                <Field label="Status" htmlFor="rf-status">
+                <Field label={f.status} htmlFor="rf-status">
                   <Select id="rf-status" name="status" defaultValue={initial.status ?? "draft"}>
-                    <option value="draft">Draft</option>
-                    <option value="published">Published</option>
-                    <option value="archived">Archived</option>
+                    <option value="draft">{f.draft}</option>
+                    <option value="published">{f.published}</option>
+                    <option value="archived">{f.archived}</option>
                   </Select>
                 </Field>
-                <Field label="Source type" htmlFor="rf-stype">
+                <Field label={copy.import.sourceType} htmlFor="rf-stype">
                   <Select id="rf-stype" name="source_type" defaultValue={initial.source_type ?? "community"}>
                     {Object.entries(SOURCE_TYPES).map(([v, l]) => (
                       <option key={v} value={v}>
@@ -183,7 +176,7 @@ export function RecipeForm({
                     ))}
                   </Select>
                 </Field>
-                <Field label="Verification" htmlFor="rf-ver">
+                <Field label={f.verification} htmlFor="rf-ver">
                   <Select id="rf-ver" name="verification_status" defaultValue={initial.verification_status ?? "unverified"}>
                     {Object.entries(VERIFICATION).map(([v, l]) => (
                       <option key={v} value={v}>
@@ -193,7 +186,7 @@ export function RecipeForm({
                   </Select>
                 </Field>
               </div>
-              <Field label={copy.recipe.dinnerware} htmlFor="rf-dw" hint="Only set from real evidence. Unknown is the safe default.">
+              <Field label={copy.recipe.dinnerware} htmlFor="rf-dw" hint={f.dinnerwareHint}>
                 <Select id="rf-dw" name="dinnerware_suitability" defaultValue={initial.dinnerware_suitability ?? "unknown"}>
                   {Object.entries(DINNERWARE).map(([v, d]) => (
                     <option key={v} value={v}>
@@ -205,42 +198,42 @@ export function RecipeForm({
             </>
           ) : (
             <>
-              <p className="text-sm text-ink-soft">Personal recipes are private to you.</p>
-              <Field label="Verification" htmlFor="rf-ver">
+              <p className="text-sm text-ink-soft">{copy.editor.privateHint}</p>
+              <Field label={f.verification} htmlFor="rf-ver">
                 <Select id="rf-ver" name="verification_status" defaultValue={initial.verification_status ?? "unverified"}>
-                  <option value="unverified">Not tested yet</option>
-                  <option value="personally_tested">I tested this</option>
-                  <option value="repeated_test">Tested several times</option>
+                  <option value="unverified">{f.notTested}</option>
+                  <option value="personally_tested">{f.iTested}</option>
+                  <option value="repeated_test">{f.testedSeveral}</option>
                 </Select>
               </Field>
             </>
           )}
         </Panel>
 
-        <Panel title="Add a source">
-          <p className="-mt-2 text-xs text-muted">Where does this come from? Leave empty if it&apos;s your own idea.</p>
-          <Field label="Source name" htmlFor="rf-sname">
-            <Input id="rf-sname" name="source_name" placeholder="e.g. AMACO layering guide, r/Pottery post" />
+        <Panel title={f.addSource}>
+          <p className="-mt-2 text-xs text-muted">{f.addSourceHint}</p>
+          <Field label={copy.import.sourceName} htmlFor="rf-sname">
+            <Input id="rf-sname" name="source_name" placeholder={f.sourceNamePlaceholder} />
           </Field>
           <Field label="URL" htmlFor="rf-surl">
             <Input id="rf-surl" name="source_url" type="url" inputMode="url" placeholder="https://…" />
           </Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Author" htmlFor="rf-sauthor">
+            <Field label={copy.import.author} htmlFor="rf-sauthor">
               <Input id="rf-sauthor" name="source_author" />
             </Field>
-            <Field label="Date" htmlFor="rf-sdate">
+            <Field label={f.date} htmlFor="rf-sdate">
               <Input id="rf-sdate" name="source_date" type="date" />
             </Field>
           </div>
-          <Field label="Source notes" htmlFor="rf-snotes">
+          <Field label={f.sourceNotes} htmlFor="rf-snotes">
             <Textarea id="rf-snotes" name="source_notes" rows={2} />
           </Field>
         </Panel>
 
         <div className="sticky bottom-20 z-10 flex flex-col gap-2 rounded-card border border-line bg-surface p-3 shadow-md md:bottom-4">
           <FormMessage state={state} />
-          <SubmitButton size="lg" pendingLabel="Saving…">
+          <SubmitButton size="lg" pendingLabel={copy.common.saving}>
             {copy.common.save}
           </SubmitButton>
         </div>

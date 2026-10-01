@@ -4,9 +4,10 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/data/auth";
 import { bool, isUuid, str } from "@/lib/forms";
-import { copy } from "@/lib/i18n";
+import { getCopy } from "@/lib/i18n/server";
 
 export async function toggleInventory(glazeId: string): Promise<{ owned: boolean; error?: string }> {
+  const copy = await getCopy();
   const viewer = await getViewer();
   if (!viewer.userId) return { owned: false, error: copy.auth.required };
   if (!isUuid(glazeId)) return { owned: false, error: copy.errors.generic };

@@ -6,15 +6,19 @@ import { LinkButton, buttonClass } from "@/components/ui/button";
 import { RecipeStatusButtons } from "@/features/admin/recipe-status-buttons";
 import { VerificationBadge } from "@/features/recipes/badges";
 import { listAdminRecipes } from "@/lib/data/admin";
-import { copy } from "@/lib/i18n";
+import { getCopy } from "@/lib/i18n/server";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
-export const metadata: Metadata = { title: copy.admin.recipes };
+export async function generateMetadata(): Promise<Metadata> {
+  const copy = await getCopy();
+  return { title: copy.admin.recipes };
+}
 
 const FILTERS = ["", "draft", "published", "archived"] as const;
 
 export default async function AdminRecipesPage({ searchParams }: PageProps<"/admin/recipes">) {
+  const copy = await getCopy();
   const sp = await searchParams;
   const status = typeof sp.status === "string" && FILTERS.includes(sp.status as (typeof FILTERS)[number]) ? sp.status : "";
   const recipes = await listAdminRecipes(status || undefined);
@@ -23,10 +27,10 @@ export default async function AdminRecipesPage({ searchParams }: PageProps<"/adm
     <>
       <PageHeader
         title={copy.admin.recipes}
-        subtitle="Public recipes. Personal recipes stay private to their owners."
+        subtitle={copy.admin.recipesHint}
         actions={
           <LinkButton href="/recipes/new">
-            <Plus className="h-4 w-4" aria-hidden /> New recipe
+            <Plus className="h-4 w-4" aria-hidden /> {copy.editor.newRecipe}
           </LinkButton>
         }
       />
@@ -37,7 +41,7 @@ export default async function AdminRecipesPage({ searchParams }: PageProps<"/adm
             href={f ? `/admin/recipes?status=${f}` : "/admin/recipes"}
             className={cn(buttonClass(status === f ? "primary" : "outline", "sm"))}
           >
-            {f || "All"}
+            {f ? copy.admin.recipeStatus[f] : copy.admin.all}
           </Link>
         ))}
       </div>
@@ -49,11 +53,11 @@ export default async function AdminRecipesPage({ searchParams }: PageProps<"/adm
                 {r.title}
               </Link>
               <p className="text-xs text-muted">
-                Cone {r.cone ?? "?"} · {copy.common.layers(r.layer_count)} · updated {formatDate(r.updated_at)}
+                {copy.recipe.cone} {r.cone ?? "?"} · {copy.common.layers(r.layer_count)} · {copy.admin.updated(formatDate(r.updated_at))}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
-              <Badge tone={r.status === "published" ? "ok" : r.status === "draft" ? "warn" : "neutral"}>{r.status}</Badge>
+              <Badge tone={r.status === "published" ? "ok" : r.status === "draft" ? "warn" : "neutral"}>{copy.admin.recipeStatus[r.status]}</Badge>
               <VerificationBadge status={r.verification_status} short />
               <LinkButton href={`/recipes/${r.slug}/edit`} variant="ghost" size="sm">
                 {copy.common.edit}
@@ -62,7 +66,7 @@ export default async function AdminRecipesPage({ searchParams }: PageProps<"/adm
             </div>
           </li>
         ))}
-        {recipes.length === 0 && <li className="px-4 py-6 text-sm text-muted">No recipes.</li>}
+        {recipes.length === 0 && <li className="px-4 py-6 text-sm text-muted">{copy.admin.noRecipes}</li>}
       </ul>
     </>
   );

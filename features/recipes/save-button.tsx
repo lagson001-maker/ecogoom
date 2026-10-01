@@ -4,7 +4,7 @@ import { Bookmark, BookmarkCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useOptimistic, useTransition } from "react";
 import { toggleSaveRecipe } from "./actions";
-import { copy } from "@/lib/i18n";
+import { useCopy } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
 
 export function SaveButton({
@@ -18,6 +18,7 @@ export function SaveButton({
   signedIn: boolean;
   compact?: boolean;
 }) {
+  const copy = useCopy();
   const router = useRouter();
   const [pending, start] = useTransition();
   const [optimistic, setOptimistic] = useOptimistic(saved);

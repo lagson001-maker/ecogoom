@@ -7,7 +7,8 @@ import { getViewer } from "@/lib/data/auth";
 import { bool, int, isUuid, oneOf, str, tags, type ActionState } from "@/lib/forms";
 import { slugify } from "@/lib/utils";
 import { OPACITIES } from "@/lib/vocabulary";
-import { copy } from "@/lib/i18n";
+import { getCopy } from "@/lib/i18n/server";
+import type { Messages } from "@/lib/i18n";
 import type { Role, SourceType, VerificationStatus } from "@/types/domain";
 
 async function requireEditorAction(): Promise<string | null> {
@@ -15,18 +16,19 @@ async function requireEditorAction(): Promise<string | null> {
   return viewer.userId && viewer.isEditor ? viewer.userId : null;
 }
 
-const done = (message = "Saved."): ActionState => ({ ok: true, message });
+const done = (message: string): ActionState => ({ ok: true, message });
 const fail = (message: string): ActionState => ({ ok: false, message });
-const dbMessage = (e: { code?: string; message: string }) =>
-  e.code === "23505" ? "That name or slug already exists." : e.code === "42501" ? copy.errors.unauthorized : e.message;
+const dbMessage = (e: { code?: string; message: string }, copy: Messages) =>
+  e.code === "23505" ? copy.admin.duplicateName : e.code === "42501" ? copy.errors.unauthorized : e.message;
 
 // --- brands & series -----------------------------------------------------------
 
 export async function saveBrand(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const copy = await getCopy();
   if (!(await requireEditorAction())) return fail(copy.errors.unauthorized);
   const id = str(fd, "id");
   const name = str(fd, "name", 120);
-  if (!name) return fail("Name is required.");
+  if (!name) return fail(copy.admin.nameRequired);
   const record = {
     name,
     slug: slugify(str(fd, "slug", 80) ?? name),
@@ -39,32 +41,34 @@ export async function saveBrand(_prev: ActionState, fd: FormData): Promise<Actio
   const { error } = id && isUuid(id)
     ? await supabase.from("brands").update(record).eq("id", id)
     : await supabase.from("brands").insert(record);
-  if (error) return fail(dbMessage(error));
+  if (error) return fail(dbMessage(error, copy));
   revalidatePath("/admin/brands");
   revalidatePath("/brands");
-  return done();
+  return done(copy.admin.savedMsg);
 }
 
 export async function saveSeries(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const copy = await getCopy();
   if (!(await requireEditorAction())) return fail(copy.errors.unauthorized);
   const brandId = str(fd, "brand_id");
   const name = str(fd, "name", 120);
-  if (!isUuid(brandId) || !name) return fail("Brand and name are required.");
+  if (!isUuid(brandId) || !name) return fail(copy.admin.brandNameRequired);
   const supabase = await createClient();
   const { error } = await supabase.from("glaze_series").insert({ brand_id: brandId, name, slug: slugify(name) });
-  if (error) return fail(dbMessage(error));
+  if (error) return fail(dbMessage(error, copy));
   revalidatePath("/admin/brands");
-  return done("Series added.");
+  return done(copy.admin.seriesAdded);
 }
 
 // --- glazes ----------------------------------------------------------------------
 
 export async function saveGlaze(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const copy = await getCopy();
   if (!(await requireEditorAction())) return fail(copy.errors.unauthorized);
   const id = str(fd, "id");
   const name = str(fd, "name", 120);
   const brandId = str(fd, "brand_id");
-  if (!name || !isUuid(brandId)) return fail("Brand and name are required.");
+  if (!name || !isUuid(brandId)) return fail(copy.admin.brandNameRequired);
   const seriesId = str(fd, "series_id");
   const swatch = str(fd, "swatch_hex", 7);
   const foodSafe = str(fd, "manufacturer_food_safe_claim");
@@ -95,13 +99,13 @@ export async function saveGlaze(_prev: ActionState, fd: FormData): Promise<Actio
 
   if (id && isUuid(id)) {
     const { error } = await supabase.from("glazes").update(record).eq("id", id);
-    if (error) return fail(dbMessage(error));
+    if (error) return fail(dbMessage(error, copy));
     revalidatePath(`/admin/glazes/${id}`);
     revalidatePath("/glazes");
-    return done();
+    return done(copy.admin.savedMsg);
   }
   const { data, error } = await supabase.from("glazes").insert(record).select("id").single();
-  if (error) return fail(dbMessage(error));
+  if (error) return fail(dbMessage(error, copy));
   revalidatePath("/glazes");
   redirect(`/admin/glazes/${data.id}`);
 }
@@ -112,11 +116,12 @@ const SOURCE_TYPES: SourceType[] = ["manufacturer", "community", "personal", "im
 const EVIDENCE: VerificationStatus[] = ["unverified", "community_reported", "manufacturer_documented", "personally_tested", "repeated_test"];
 
 export async function saveSource(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const copy = await getCopy();
   const userId = await requireEditorAction();
   if (!userId) return fail(copy.errors.unauthorized);
   const id = str(fd, "id");
   const name = str(fd, "name", 200);
-  if (!name) return fail("Name is required.");
+  if (!name) return fail(copy.admin.nameRequired);
   const record = {
     name,
     url: str(fd, "url", 1000),
@@ -130,10 +135,10 @@ export async function saveSource(_prev: ActionState, fd: FormData): Promise<Acti
   const { error } = id && isUuid(id)
     ? await supabase.from("sources").update(record).eq("id", id)
     : await supabase.from("sources").insert({ ...record, created_by: userId });
-  if (error) return fail(dbMessage(error));
+  if (error) return fail(dbMessage(error, copy));
   revalidatePath("/admin/sources");
   revalidatePath("/sources");
-  return done();
+  return done(copy.admin.savedMsg);
 }
 
 // --- users -------------------------------------------------------------------------

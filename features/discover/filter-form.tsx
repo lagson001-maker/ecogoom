@@ -1,20 +1,9 @@
 import { ChipCheckbox, ChipRadio, Checkbox, Field, Select } from "@/components/ui/form";
 import { buttonClass } from "@/components/ui/button";
-import { copy } from "@/lib/i18n";
-import {
-  ATMOSPHERES,
-  CLAY_COLORS,
-  COLOR_CHIP_HEX,
-  COLOR_TAGS,
-  CONES,
-  EFFECT_TAGS,
-  SURFACE_TAGS,
-  humanizeTag,
-} from "@/lib/vocabulary";
+import { getCopy } from "@/lib/i18n/server";
+import { COLOR_CHIP_HEX, COLOR_TAGS, CONES, EFFECT_TAGS, SURFACE_TAGS, vocab } from "@/lib/vocabulary";
 import type { DiscoverFilters } from "@/lib/discover-params";
 import type { Brand, GlazeSeries, GlazeWithBrand } from "@/types/domain";
-
-const t = copy.filters;
 
 export interface FilterOptions {
   brands: Brand[];
@@ -32,7 +21,7 @@ function Group({ legend, children }: { legend: string; children: React.ReactNode
 }
 
 /** Plain GET form: works without JS, shareable URLs. */
-export function FilterForm({
+export async function FilterForm({
   f,
   options,
   signedIn,
@@ -43,6 +32,10 @@ export function FilterForm({
   signedIn: boolean;
   idPrefix: string;
 }) {
+  const copy = await getCopy();
+  const t = copy.filters;
+  const v = vocab(copy);
+  const { ATMOSPHERES, CLAY_COLORS } = v;
   const seriesNames = Array.from(new Set(options.series.map((s) => s.name)));
   return (
     <form action="/" method="get" className="flex flex-col gap-4">
@@ -109,17 +102,17 @@ export function FilterForm({
 
       <Group legend={t.color}>
         {COLOR_TAGS.filter((c) => c !== "clear").map((c) => (
-          <ChipCheckbox key={c} name="color" value={c} label={c} swatch={COLOR_CHIP_HEX[c]} defaultChecked={f.color.includes(c)} />
+          <ChipCheckbox key={c} name="color" value={c} label={v.tag(c)} swatch={COLOR_CHIP_HEX[c]} defaultChecked={f.color.includes(c)} />
         ))}
       </Group>
       <Group legend={t.effect}>
         {EFFECT_TAGS.map((e) => (
-          <ChipCheckbox key={e} name="effect" value={e} label={humanizeTag(e)} defaultChecked={f.effect.includes(e)} />
+          <ChipCheckbox key={e} name="effect" value={e} label={v.tag(e)} defaultChecked={f.effect.includes(e)} />
         ))}
       </Group>
       <Group legend={t.surface}>
         {SURFACE_TAGS.map((s) => (
-          <ChipCheckbox key={s} name="surface" value={s} label={s} defaultChecked={f.surface.includes(s)} />
+          <ChipCheckbox key={s} name="surface" value={s} label={v.tag(s)} defaultChecked={f.surface.includes(s)} />
         ))}
       </Group>
       <Group legend={t.glazeCount}>

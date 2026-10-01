@@ -10,8 +10,8 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { LayerEditor, type GlazeOption } from "@/features/recipes/layer-editor";
 import { TagPicker } from "@/features/recipes/tag-picker";
 import { saveExperiment } from "./actions";
-import { copy } from "@/lib/i18n";
-import { ATMOSPHERES, CLAY_COLORS, CONES, EFFECT_TAGS, EXPERIMENT_STATUS, RESULT_TAGS, SUCCESS_LEVELS } from "@/lib/vocabulary";
+import { useCopy } from "@/lib/i18n/client";
+import { CONES, EFFECT_TAGS, RESULT_TAGS, vocab } from "@/lib/vocabulary";
 import type { ExperimentWithLayers } from "@/types/domain";
 
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
@@ -24,6 +24,9 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
 }
 
 export function ExperimentForm({ experiment, glazes }: { experiment: ExperimentWithLayers; glazes: GlazeOption[] }) {
+  const copy = useCopy();
+  const f = copy.form;
+  const { ATMOSPHERES, CLAY_COLORS, EXPERIMENT_STATUS, SUCCESS_LEVELS } = vocab(copy);
   const [state, action] = useActionState(saveExperiment, null);
   const e = experiment;
 
@@ -31,13 +34,13 @@ export function ExperimentForm({ experiment, glazes }: { experiment: ExperimentW
     <StatefulForm action={action} className="grid gap-5 lg:grid-cols-2">
       <input type="hidden" name="id" value={e.id} />
       <div className="flex flex-col gap-5">
-        <Panel title="Test setup">
+        <Panel title={f.testSetup}>
           {e.recipe && <p className="-mt-2 text-sm text-muted">{copy.lab.clonedHint}</p>}
-          <Field label="Title" htmlFor="ef-title" error={state?.fieldErrors?.title}>
+          <Field label={f.title} htmlFor="ef-title" error={state?.fieldErrors?.title}>
             <Input id="ef-title" name="title" defaultValue={e.title} required />
           </Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Status" htmlFor="ef-status">
+            <Field label={f.status} htmlFor="ef-status">
               <Select id="ef-status" name="status" defaultValue={e.status}>
                 {Object.entries(EXPERIMENT_STATUS).map(([v, l]) => (
                   <option key={v} value={v}>
@@ -46,7 +49,7 @@ export function ExperimentForm({ experiment, glazes }: { experiment: ExperimentW
                 ))}
               </Select>
             </Field>
-            <Field label="Test date" htmlFor="ef-date">
+            <Field label={f.testDate} htmlFor="ef-date">
               <Input id="ef-date" name="test_date" type="date" defaultValue={e.test_date ?? ""} />
             </Field>
             <Field label={copy.recipe.cone} htmlFor="ef-cone">
@@ -69,10 +72,10 @@ export function ExperimentForm({ experiment, glazes }: { experiment: ExperimentW
                 ))}
               </Select>
             </Field>
-            <Field label="Clay body" htmlFor="ef-clay">
-              <Input id="ef-clay" name="clay_body" defaultValue={e.clay_body ?? ""} placeholder="Your clay" />
+            <Field label={copy.filters.clay} htmlFor="ef-clay">
+              <Input id="ef-clay" name="clay_body" defaultValue={e.clay_body ?? ""} placeholder={f.yourClay} />
             </Field>
-            <Field label="Clay color" htmlFor="ef-claycolor">
+            <Field label={f.clayColor} htmlFor="ef-claycolor">
               <Select id="ef-claycolor" name="clay_color" defaultValue={e.clay_color ?? ""}>
                 <option value="">{copy.common.unknown}</option>
                 {CLAY_COLORS.map((c) => (
@@ -96,18 +99,18 @@ export function ExperimentForm({ experiment, glazes }: { experiment: ExperimentW
           }))} />
         </Panel>
 
-        <Panel title="Process notes">
-          <Field label="Application notes" htmlFor="ef-appnotes">
+        <Panel title={f.processNotes}>
+          <Field label={f.applicationNotes} htmlFor="ef-appnotes">
             <Textarea id="ef-appnotes" name="application_notes" defaultValue={e.application_notes ?? ""} rows={2} />
           </Field>
-          <Field label="Kiln / firing notes" htmlFor="ef-kiln" hint="Schedule, kiln position, cooling…">
+          <Field label={f.kilnNotes} htmlFor="ef-kiln" hint={f.kilnHint}>
             <Textarea id="ef-kiln" name="kiln_notes" defaultValue={e.kiln_notes ?? ""} rows={2} />
           </Field>
         </Panel>
       </div>
 
       <div className="flex flex-col gap-5">
-        <Panel title="After firing">
+        <Panel title={f.afterFiring}>
           <fieldset>
             <legend className="mb-2 text-sm font-medium">{copy.lab.rating}</legend>
             <div className="flex flex-wrap gap-1.5">
@@ -130,17 +133,17 @@ export function ExperimentForm({ experiment, glazes }: { experiment: ExperimentW
           <fieldset>
             <legend className="mb-2 text-sm font-medium">{copy.lab.success}</legend>
             <div className="flex flex-wrap gap-1.5">
-              <ChipRadio name="success_level" value="" label="Not fired yet" defaultChecked={!e.success_level} />
+              <ChipRadio name="success_level" value="" label={f.notFired} defaultChecked={!e.success_level} />
               {Object.entries(SUCCESS_LEVELS).map(([v, l]) => (
                 <ChipRadio key={v} name="success_level" value={v} label={l} defaultChecked={e.success_level === v} />
               ))}
             </div>
           </fieldset>
-          <Field label="Result notes" htmlFor="ef-result">
+          <Field label={f.resultNotes} htmlFor="ef-result">
             <Textarea id="ef-result" name="result_notes" defaultValue={e.result_notes ?? ""} rows={3} />
           </Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Observed movement" htmlFor="ef-move">
+            <Field label={copy.lab.observedMovement} htmlFor="ef-move">
               <Select id="ef-move" name="movement_level" defaultValue={e.movement_level?.toString() ?? ""}>
                 <option value="">—</option>
                 {[0, 1, 2, 3, 4, 5].map((n) => (
@@ -150,7 +153,7 @@ export function ExperimentForm({ experiment, glazes }: { experiment: ExperimentW
                 ))}
               </Select>
             </Field>
-            <Field label="Observed run risk" htmlFor="ef-run">
+            <Field label={copy.lab.observedRunRisk} htmlFor="ef-run">
               <Select id="ef-run" name="run_risk_observed" defaultValue={e.run_risk_observed?.toString() ?? ""}>
                 <option value="">—</option>
                 {[0, 1, 2, 3, 4, 5].map((n) => (
@@ -173,7 +176,7 @@ export function ExperimentForm({ experiment, glazes }: { experiment: ExperimentW
         <div className="sticky bottom-20 z-10 flex flex-col gap-2 rounded-card border border-line bg-surface p-3 shadow-md md:bottom-4">
           <FormMessage state={state} />
           <div className="flex gap-2">
-            <SubmitButton size="lg" className="flex-1" pendingLabel="Saving…">
+            <SubmitButton size="lg" className="flex-1" pendingLabel={copy.common.saving}>
               {copy.common.save}
             </SubmitButton>
             <LinkButton href={`/lab/${e.id}`} variant="outline" size="lg">

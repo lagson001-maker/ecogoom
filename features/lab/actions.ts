@@ -7,7 +7,7 @@ import { getViewer } from "@/lib/data/auth";
 import { bool, int, isUuid, layersFromForm, oneOf, str, tags, type ActionState } from "@/lib/forms";
 import { uniqueSlug } from "@/lib/utils";
 import { ATMOSPHERES, CLAY_COLORS, EFFECT_TAGS, SURFACE_TAGS } from "@/lib/vocabulary";
-import { copy } from "@/lib/i18n";
+import { getCopy } from "@/lib/i18n/server";
 import type { ExperimentStatus, SuccessLevel } from "@/types/domain";
 
 const STATUSES: ExperimentStatus[] = ["in_progress", "waiting_firing", "completed"];
@@ -87,12 +87,13 @@ export async function createBlankExperiment(): Promise<void> {
 }
 
 export async function saveExperiment(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const copy = await getCopy();
   const viewer = await getViewer();
   if (!viewer.userId) return { ok: false, message: copy.auth.required };
   const id = str(fd, "id");
   if (!isUuid(id)) return { ok: false, message: copy.errors.generic };
   const title = str(fd, "title", 200);
-  if (!title) return { ok: false, message: "Title is required.", fieldErrors: { title: "Title is required." } };
+  if (!title) return { ok: false, message: copy.form.titleRequired, fieldErrors: { title: copy.form.titleRequired } };
 
   const supabase = await createClient();
   const { data, error } = await supabase

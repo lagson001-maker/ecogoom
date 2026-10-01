@@ -7,15 +7,18 @@ import { GlazeFilters } from "@/features/inventory/glaze-filters";
 import { getViewer } from "@/lib/data/auth";
 import { listBrands, listGlazes, listSeries } from "@/lib/data/catalog";
 import { getInventoryGlazeIds } from "@/lib/data/personal";
-import { copy } from "@/lib/i18n";
+import { getCopy } from "@/lib/i18n/server";
 
-export const metadata: Metadata = { title: copy.glaze.library };
+export async function generateMetadata(): Promise<Metadata> {
+  const copy = await getCopy();
+  return { title: copy.glaze.library };
+}
 
 export default async function GlazeLibraryPage({ searchParams }: PageProps<"/glazes">) {
   const sp = await searchParams;
   const one = (k: string) => (typeof sp[k] === "string" && sp[k] ? (sp[k] as string) : null);
   const f = { q: one("q"), brand: one("brand"), series: one("series"), color: one("color") };
-  const viewer = await getViewer();
+  const [viewer, copy] = await Promise.all([getViewer(), getCopy()]);
 
   const [glazes, brands, series, owned] = await Promise.all([
     listGlazes(f),
@@ -33,14 +36,14 @@ export default async function GlazeLibraryPage({ searchParams }: PageProps<"/gla
         actions={
           viewer.isEditor && (
             <LinkButton href="/admin/glazes/new" variant="outline">
-              <Plus className="h-4 w-4" aria-hidden /> New glaze
+              <Plus className="h-4 w-4" aria-hidden /> {copy.glaze.newGlaze}
             </LinkButton>
           )
         }
       />
       <GlazeFilters action="/glazes" brands={brands} series={series} values={f} />
       {glazes.length === 0 ? (
-        <EmptyState title="No glazes match." description={copy.discover.emptyHint} />
+        <EmptyState title={copy.glaze.noMatch} description={copy.discover.emptyHint} />
       ) : (
         <GlazeGrid>
           {glazes.map((g) => (

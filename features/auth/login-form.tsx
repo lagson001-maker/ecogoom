@@ -5,25 +5,25 @@ import { useActionState, useState } from "react";
 import { Field, FormMessage, Input } from "@/components/ui/form";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { authAction } from "./actions";
-import { copy } from "@/lib/i18n";
+import { useCopy } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
 
 type Mode = "signin" | "signup" | "magic";
-const t = copy.auth;
-
 export function LoginForm({ next }: { next: string }) {
+  const copy = useCopy();
+  const t = copy.auth;
   const [mode, setMode] = useState<Mode>("signin");
   const [state, action] = useActionState(authAction, null);
 
   const tabs: { value: Mode; label: string }[] = [
     { value: "signin", label: t.signIn },
     { value: "signup", label: t.signUp },
-    { value: "magic", label: "Magic link" },
+    { value: "magic", label: t.magicTab },
   ];
 
   return (
     <div>
-      <div role="tablist" aria-label="Sign-in method" className="mb-5 grid grid-cols-3 rounded-lg bg-surface-2 p-1">
+      <div role="tablist" aria-label={t.method} className="mb-5 grid grid-cols-3 rounded-lg bg-surface-2 p-1">
         {tabs.map((tab) => (
           <button
             key={tab.value}
@@ -48,7 +48,7 @@ export function LoginForm({ next }: { next: string }) {
           <Input id="email" name="email" type="email" autoComplete="email" required />
         </Field>
         {mode !== "magic" && (
-          <Field label={t.password} htmlFor="password" error={state?.fieldErrors?.password} hint={mode === "signup" ? "At least 8 characters." : undefined}>
+          <Field label={t.password} htmlFor="password" error={state?.fieldErrors?.password} hint={mode === "signup" ? t.passwordHint : undefined}>
             <Input
               id="password"
               name="password"
@@ -60,7 +60,7 @@ export function LoginForm({ next }: { next: string }) {
           </Field>
         )}
         <FormMessage state={state} />
-        <SubmitButton size="lg" pendingLabel="Please wait…">
+        <SubmitButton size="lg" pendingLabel={t.wait}>
           {mode === "signin" ? t.signIn : mode === "signup" ? t.signUp : t.magicLink}
         </SubmitButton>
       </StatefulForm>

@@ -5,9 +5,9 @@ import { useId, useState } from "react";
 import { Input, Select } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Swatch } from "./stack";
-import { copy } from "@/lib/i18n";
+import { useCopy } from "@/lib/i18n/client";
 import { MAX_LAYERS } from "@/lib/forms";
-import { COVERAGE_AREAS } from "@/lib/vocabulary";
+import { vocab } from "@/lib/vocabulary";
 import type { LayerInput } from "@/types/domain";
 
 export interface GlazeOption {
@@ -17,8 +17,6 @@ export interface GlazeOption {
   code: string | null;
   swatch: string | null;
 }
-
-const t = copy.editor;
 
 function emptyLayer(): LayerInput {
   return { glaze_id: "", coat_count: 2, coverage_area: "full", coverage_percent: null, application_method: null, notes: null };
@@ -39,6 +37,9 @@ export function LayerEditor({
   name?: string;
   error?: string;
 }) {
+  const copy = useCopy();
+  const t = copy.editor;
+  const { COVERAGE_AREAS } = vocab(copy);
   const [layers, setLayers] = useState<LayerInput[]>(initial.length ? initial : [emptyLayer()]);
   const baseId = useId();
   const byBrand = new Map<string, GlazeOption[]>();
@@ -86,7 +87,7 @@ export function LayerEditor({
                   <div className="flex items-center gap-2">
                     <Swatch hex={g?.swatch ?? null} />
                     <span className="text-sm font-semibold text-ink">{t.layer(i + 1)}</span>
-                    {i === 0 && <span className="text-xs text-muted">· on the clay</span>}
+                    {i === 0 && <span className="text-xs text-muted">· {t.onClay}</span>}
                   </div>
                   <div className="flex gap-1">
                     <IconBtn label={t.moveUp} onClick={() => move(i, 1)} disabled={i === layers.length - 1}>
@@ -107,7 +108,7 @@ export function LayerEditor({
                 <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
                   <div>
                     <label htmlFor={`${id}-glaze`} className="sr-only">
-                      Glaze for {t.layer(i + 1)}
+                      {t.glazeFor(t.layer(i + 1))}
                     </label>
                     <Select
                       id={`${id}-glaze`}
@@ -128,14 +129,14 @@ export function LayerEditor({
                       ))}
                     </Select>
                   </div>
-                  <div className="flex items-center gap-1" role="group" aria-label={`Coats for ${t.layer(i + 1)}`}>
-                    <IconBtn label="Fewer coats" onClick={() => update(i, { coat_count: Math.max(1, layer.coat_count - 1) })}>
+                  <div className="flex items-center gap-1" role="group" aria-label={t.coatsFor(t.layer(i + 1))}>
+                    <IconBtn label={t.fewerCoats} onClick={() => update(i, { coat_count: Math.max(1, layer.coat_count - 1) })}>
                       <Minus className="h-4 w-4" />
                     </IconBtn>
                     <span className="w-16 text-center text-sm font-medium" aria-live="polite">
                       {copy.common.coats(layer.coat_count)}
                     </span>
-                    <IconBtn label="More coats" onClick={() => update(i, { coat_count: Math.min(10, layer.coat_count + 1) })}>
+                    <IconBtn label={t.moreCoats} onClick={() => update(i, { coat_count: Math.min(10, layer.coat_count + 1) })}>
                       <Plus className="h-4 w-4" />
                     </IconBtn>
                   </div>
@@ -144,7 +145,7 @@ export function LayerEditor({
                 <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-[1fr_7rem_1fr]">
                   <div>
                     <label htmlFor={`${id}-cov`} className="sr-only">
-                      Coverage
+                      {t.coverage}
                     </label>
                     <Select
                       id={`${id}-cov`}
@@ -160,7 +161,7 @@ export function LayerEditor({
                   </div>
                   <div>
                     <label htmlFor={`${id}-pct`} className="sr-only">
-                      Coverage percent
+                      {t.coveragePercent}
                     </label>
                     <Input
                       id={`${id}-pct`}
@@ -168,7 +169,7 @@ export function LayerEditor({
                       inputMode="numeric"
                       min={1}
                       max={100}
-                      placeholder="% area"
+                      placeholder={t.areaPlaceholder}
                       value={layer.coverage_percent ?? ""}
                       disabled={layer.coverage_area === "full"}
                       onChange={(e) => update(i, { coverage_percent: e.target.value ? Number(e.target.value) : null })}
@@ -176,23 +177,23 @@ export function LayerEditor({
                   </div>
                   <div className="col-span-2 sm:col-span-1">
                     <label htmlFor={`${id}-app`} className="sr-only">
-                      Application method
+                      {copy.form.applicationMethod}
                     </label>
                     <Input
                       id={`${id}-app`}
-                      placeholder="Brush / dip / spray"
+                      placeholder={t.methodPlaceholder}
                       value={layer.application_method ?? ""}
                       onChange={(e) => update(i, { application_method: e.target.value || null })}
                     />
                   </div>
                 </div>
                 <label htmlFor={`${id}-notes`} className="sr-only">
-                  Layer notes
+                  {t.layerNotes}
                 </label>
                 <Input
                   id={`${id}-notes`}
                   className="mt-2"
-                  placeholder="Notes (optional)"
+                  placeholder={t.notesPlaceholder}
                   value={layer.notes ?? ""}
                   onChange={(e) => update(i, { notes: e.target.value || null })}
                 />

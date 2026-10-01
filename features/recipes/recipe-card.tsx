@@ -1,3 +1,5 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import { Lock } from "lucide-react";
@@ -5,16 +7,17 @@ import { Badge } from "@/components/ui/primitives";
 import { VerificationBadge } from "./badges";
 import { MiniStack, TileIllustration } from "./stack";
 import { SaveButton } from "./save-button";
-import { copy } from "@/lib/i18n";
-import { humanizeTag } from "@/lib/vocabulary";
+import { useCopy } from "@/lib/i18n/client";
+import { vocab } from "@/lib/vocabulary";
 import type { RecipeSummary } from "@/types/domain";
 
 export function RecipeVisual({ recipe, sizes, priority }: { recipe: RecipeSummary; sizes: string; priority?: boolean }) {
+  const copy = useCopy();
   if (recipe.primary_image) {
     return (
       <Image
         src={recipe.primary_image.url}
-        alt={recipe.primary_image.alt_text ?? recipe.primary_image.caption ?? `Fired result: ${recipe.title}`}
+        alt={recipe.primary_image.alt_text ?? recipe.primary_image.caption ?? copy.recipe.firedResult(recipe.title)}
         fill
         sizes={sizes}
         priority={priority}
@@ -36,6 +39,8 @@ export function RecipeCard({
   signedIn: boolean;
   priority?: boolean;
 }) {
+  const copy = useCopy();
+  const v = vocab(copy);
   const brands = Array.from(new Map(recipe.layers.map((l) => [l.glaze.brand.id, l.glaze.brand.name])).values());
   const tagsShown = recipe.effect_tags.slice(0, 2);
 
@@ -44,7 +49,7 @@ export function RecipeCard({
       <div className="relative aspect-[4/5] overflow-hidden bg-surface-2">
         <RecipeVisual recipe={recipe} sizes="(min-width: 1280px) 22vw, (min-width: 768px) 30vw, 50vw" priority={priority} />
         {!recipe.primary_image && (
-          <span className="absolute bottom-2 left-2 rounded bg-black/45 px-1.5 py-0.5 text-[10px] text-white">Illustration</span>
+          <span className="absolute bottom-2 left-2 rounded bg-black/45 px-1.5 py-0.5 text-[10px] text-white">{copy.recipe.illustrationTag}</span>
         )}
         <div className="absolute right-2 top-2 z-10">
           <SaveButton recipeId={recipe.id} saved={saved} signedIn={signedIn} compact />
@@ -72,12 +77,12 @@ export function RecipeCard({
         <MiniStack layers={recipe.layers} />
 
         <div className="mt-auto flex flex-wrap items-center gap-1 pt-1 text-xs text-ink-soft">
-          {recipe.cone !== null && <span className="font-medium text-ink">Cone {recipe.cone}</span>}
+          {recipe.cone !== null && <span className="font-medium text-ink">{v.coneValue(recipe.cone)}</span>}
           <span aria-hidden>·</span>
           <span>{copy.common.layers(recipe.layer_count || recipe.layers.length)}</span>
           {tagsShown.map((t) => (
             <span key={t} className="rounded bg-surface-2 px-1.5 py-0.5">
-              {humanizeTag(t)}
+              {v.tag(t)}
             </span>
           ))}
         </div>

@@ -10,11 +10,12 @@ import { getGlazeById, listBrands, listSeries } from "@/lib/data/catalog";
 import { getMediaFor } from "@/lib/data/media";
 import { createClient } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/forms";
+import { getCopy } from "@/lib/i18n/server";
 
 export default async function EditGlazePage({ params }: PageProps<"/admin/glazes/[id]">) {
   const { id } = await params;
   if (!isUuid(id)) notFound();
-  const [glaze, brands, series] = await Promise.all([getGlazeById(id), listBrands(true), listSeries()]);
+  const [glaze, brands, series, copy] = await Promise.all([getGlazeById(id), listBrands(true), listSeries(), getCopy()]);
   if (!glaze) notFound();
   const media = (await getMediaFor(await createClient(), "glaze", [glaze.id])).get(glaze.id) ?? [];
 
@@ -24,7 +25,7 @@ export default async function EditGlazePage({ params }: PageProps<"/admin/glazes
         title={`${glaze.brand.name} ${glaze.name}`}
         subtitle={
           <Link href={`/glazes/${glaze.slug}`} className="hover:underline">
-            View public page
+            {copy.admin.viewPublic}
           </Link>
         }
       />
@@ -34,7 +35,7 @@ export default async function EditGlazePage({ params }: PageProps<"/admin/glazes
             <GlazeFields glaze={glaze} brands={brands} series={series} />
           </ActionForm>
         </Card>
-        <Section title="Product images" className="mt-0">
+        <Section title={copy.admin.productImages} className="mt-0">
           <div className="space-y-3">
             <MediaGallery media={media} canEdit revalidate={`/admin/glazes/${glaze.id}`} />
             <ImageUpload
@@ -42,7 +43,7 @@ export default async function EditGlazePage({ params }: PageProps<"/admin/glazes
               ownerId={glaze.id}
               bucket="public-glaze-assets"
               folder={`glazes/${glaze.id}`}
-              label="Add product image"
+              label={copy.admin.addProductImage}
               revalidate={`/admin/glazes/${glaze.id}`}
             />
           </div>

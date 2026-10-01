@@ -1,8 +1,9 @@
 import { Search } from "lucide-react";
-import { copy } from "@/lib/i18n";
+import { getCopy } from "@/lib/i18n/server";
 
 /** GET search that resets filters' page but keeps nothing else — free text drives the query. */
-export function SearchBar({ defaultValue, action = "/" }: { defaultValue: string; action?: string }) {
+export async function SearchBar({ defaultValue, action = "/" }: { defaultValue: string; action?: string }) {
+  const copy = await getCopy();
   return (
     <form action={action} method="get" role="search" className="relative flex-1">
       <label htmlFor="q" className="sr-only">

@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/data/auth";
 import { isUuid } from "@/lib/forms";
 import { BUCKETS, isSafeStoragePath } from "@/lib/storage";
-import { copy } from "@/lib/i18n";
+import { getCopy } from "@/lib/i18n/server";
 import type { Bucket, MediaOwnerType } from "@/types/domain";
 
 const OWNER_TYPES: MediaOwnerType[] = ["glaze", "recipe", "experiment", "recommendation_reference"];
@@ -26,6 +26,7 @@ export async function registerMedia(input: {
   sourceCredit?: string | null;
   revalidate?: string;
 }): Promise<{ error?: string }> {
+  const copy = await getCopy();
   const viewer = await getViewer();
   if (!viewer.userId) return { error: copy.auth.required };
   if (!OWNER_TYPES.includes(input.ownerType) || !ALL_BUCKETS.includes(input.bucket) || !isUuid(input.ownerId)) {
@@ -68,6 +69,7 @@ export async function registerMedia(input: {
 }
 
 export async function deleteMedia(id: string, revalidate?: string): Promise<{ error?: string }> {
+  const copy = await getCopy();
   const viewer = await getViewer();
   if (!viewer.userId || !isUuid(id)) return { error: copy.errors.unauthorized };
   const supabase = await createClient();
@@ -81,6 +83,7 @@ export async function deleteMedia(id: string, revalidate?: string): Promise<{ er
 }
 
 export async function setPrimaryMedia(id: string, revalidate?: string): Promise<{ error?: string }> {
+  const copy = await getCopy();
   const viewer = await getViewer();
   if (!viewer.userId || !isUuid(id)) return { error: copy.errors.unauthorized };
   const supabase = await createClient();

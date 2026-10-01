@@ -5,18 +5,22 @@ import { Card, PageHeader } from "@/components/ui/primitives";
 import { LinkButton } from "@/components/ui/button";
 import { getAdminCounts } from "@/lib/data/admin";
 import { isAIConfigured } from "@/lib/ai";
-import { copy } from "@/lib/i18n";
+import { getCopy } from "@/lib/i18n/server";
 
-export const metadata: Metadata = { title: copy.admin.title };
+export async function generateMetadata(): Promise<Metadata> {
+  const copy = await getCopy();
+  return { title: copy.admin.title };
+}
 
 export default async function AdminPage() {
+  const copy = await getCopy();
   const counts = await getAdminCounts();
   const stats = [
-    { label: "Brands", value: counts.brands, href: "/admin/brands" },
-    { label: "Glazes", value: counts.glazes, href: "/admin/glazes" },
-    { label: "Published recipes", value: counts.published, href: "/admin/recipes?status=published" },
-    { label: "Draft recipes", value: counts.drafts, href: "/admin/recipes?status=draft" },
-    { label: "Sources", value: counts.sources, href: "/admin/sources" },
+    { label: copy.admin.brands, value: counts.brands, href: "/admin/brands" },
+    { label: copy.admin.glazes, value: counts.glazes, href: "/admin/glazes" },
+    { label: copy.admin.publishedRecipes, value: counts.published, href: "/admin/recipes?status=published" },
+    { label: copy.admin.draftRecipes, value: counts.drafts, href: "/admin/recipes?status=draft" },
+    { label: copy.admin.sources, value: counts.sources, href: "/admin/sources" },
   ];
   return (
     <>
@@ -25,10 +29,10 @@ export default async function AdminPage() {
         actions={
           <>
             <LinkButton href="/recipes/new">
-              <Plus className="h-4 w-4" aria-hidden /> New recipe
+              <Plus className="h-4 w-4" aria-hidden /> {copy.editor.newRecipe}
             </LinkButton>
             <LinkButton href="/admin/glazes/new" variant="outline">
-              <Plus className="h-4 w-4" aria-hidden /> New glaze
+              <Plus className="h-4 w-4" aria-hidden /> {copy.glaze.newGlaze}
             </LinkButton>
             <LinkButton href="/import" variant="outline">
               {copy.nav.import}
@@ -47,8 +51,7 @@ export default async function AdminPage() {
         ))}
       </div>
       <p className="mt-6 text-sm text-ink-soft">
-        AI: <strong>{isAIConfigured() ? "configured" : "not configured"}</strong>. Without it, search and recommendations use
-        deterministic tag matching and imports are filled manually.
+        AI: <strong>{isAIConfigured() ? copy.admin.aiOn : copy.admin.aiOff}</strong>. {copy.admin.aiNote}
       </p>
     </>
   );

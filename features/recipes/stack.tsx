@@ -1,9 +1,11 @@
+"use client";
+
 // Visual representations of a layer stack. Data is stored bottom-up
 // (layer_position 1 = on the clay); these render top-down like the pot.
 
 import Link from "next/link";
-import { copy } from "@/lib/i18n";
-import { coverageLabel } from "@/lib/vocabulary";
+import { useCopy } from "@/lib/i18n/client";
+import { vocab } from "@/lib/vocabulary";
 import { cn } from "@/lib/utils";
 import type { CoverageArea, GlazeWithBrand } from "@/types/domain";
 
@@ -33,8 +35,9 @@ const topDown = (layers: StackLayer[]) => [...layers].sort((a, b) => b.layer_pos
 
 /** Compact stack for cards: TOP / Honey Flux ×2 / Obsidian ×2 / CLAY */
 export function MiniStack({ layers }: { layers: StackLayer[] }) {
+  const copy = useCopy();
   return (
-    <ol className="space-y-0.5 text-xs" aria-label="Layer order, top to bottom">
+    <ol className="space-y-0.5 text-xs" aria-label={copy.recipe.layerOrder}>
       <li className="text-[10px] font-semibold tracking-widest text-muted" aria-hidden>
         {copy.common.top}
       </li>
@@ -54,6 +57,8 @@ export function MiniStack({ layers }: { layers: StackLayer[] }) {
 
 /** Full stack for the detail page. */
 export function LayerStack({ layers, clay }: { layers: StackLayer[]; clay?: string | null }) {
+  const copy = useCopy();
+  const { coverageLabel } = vocab(copy);
   return (
     <div>
       <p className="mb-2 text-xs font-semibold tracking-widest text-muted">{copy.common.top}</p>
@@ -103,6 +108,7 @@ const BANDS: Record<CoverageArea, [number, number]> = {
  * presented as a fired result.
  */
 export function TileIllustration({ layers, className, label }: { layers: StackLayer[]; className?: string; label?: string }) {
+  const copy = useCopy();
   const bottomUp = [...layers].sort((a, b) => a.layer_position - b.layer_position);
   const W = 120;
   const H = 160;

@@ -9,15 +9,16 @@ import { RecipeCard, RecipeGrid } from "@/features/recipes/recipe-card";
 import { requireUser } from "@/lib/data/auth";
 import { listExperiments } from "@/lib/data/personal";
 import { getPersonalRecipes, getSavedRecipeIds } from "@/lib/data/recipes";
-import { copy } from "@/lib/i18n";
+import { getCopy } from "@/lib/i18n/server";
 import type { ExperimentWithLayers } from "@/types/domain";
 
-export const metadata: Metadata = { title: copy.lab.title };
-
-const s = copy.lab.sections;
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getCopy()).lab.title };
+}
 
 export default async function LabPage() {
-  const viewer = await requireUser("/lab");
+  const [viewer, copy] = await Promise.all([requireUser("/lab"), getCopy()]);
+  const s = copy.lab.sections;
   const [experiments, personalRecipes, saved] = await Promise.all([
     listExperiments(viewer.userId),
     getPersonalRecipes(viewer.userId),
@@ -26,7 +27,7 @@ export default async function LabPage() {
 
   const newTest = (
     <form action={createBlankExperiment}>
-      <SubmitButton pendingLabel="Creating…">
+      <SubmitButton pendingLabel={copy.common.creating}>
         <Plus className="h-4 w-4" aria-hidden />
         {copy.lab.newTest}
       </SubmitButton>
@@ -40,7 +41,7 @@ export default async function LabPage() {
         <EmptyState
           icon={<FlaskConical className="h-8 w-8" />}
           title={copy.lab.empty}
-          description="Pick a recipe and tap “Test this combo”, or log a test you already fired."
+          description={copy.lab.emptyHint}
           actions={
             <>
               <LinkButton href="/" variant="outline">
@@ -68,7 +69,7 @@ export default async function LabPage() {
     <>
       <PageHeader title={copy.lab.title} subtitle={copy.lab.subtitle} actions={newTest} />
 
-      <nav aria-label="Lab sections" className="-mx-1 mb-2 flex gap-2 overflow-x-auto px-1 pb-1">
+      <nav aria-label={copy.lab.sectionsNav} className="-mx-1 mb-2 flex gap-2 overflow-x-auto px-1 pb-1">
         {groups.map((g, i) => (
           <a
             key={g.title}
@@ -93,15 +94,15 @@ export default async function LabPage() {
       )}
 
       <Section
-        title="My personal recipes"
+        title={copy.lab.personalRecipes}
         action={
           <LinkButton href="/recipes/new" variant="ghost" size="sm">
-            <Plus className="h-4 w-4" aria-hidden /> New recipe
+            <Plus className="h-4 w-4" aria-hidden /> {copy.editor.newRecipe}
           </LinkButton>
         }
       >
         {personalRecipes.length === 0 ? (
-          <p className="text-sm text-muted">Promote a successful test or create a variation to build your own recipes.</p>
+          <p className="text-sm text-muted">{copy.lab.personalEmpty}</p>
         ) : (
           <RecipeGrid>
             {personalRecipes.map((r) => (

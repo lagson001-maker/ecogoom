@@ -18,22 +18,22 @@ import { getViewer } from "@/lib/data/auth";
 import { getRecipeBySlug, getRelatedRecipes, getSavedRecipeIds } from "@/lib/data/recipes";
 import { getExperimentsForRecipe } from "@/lib/data/personal";
 import { BUCKETS } from "@/lib/storage";
-import { copy } from "@/lib/i18n";
-import { ATMOSPHERES, CLAY_COLORS, DINNERWARE, SOURCE_TYPES, humanizeTag, riskLevel } from "@/lib/vocabulary";
+import { getCopy } from "@/lib/i18n/server";
+import { riskLevel, vocab, type Vocab } from "@/lib/vocabulary";
 import { formatDate } from "@/lib/utils";
-
-const t = copy.recipe;
 
 export async function generateMetadata({ params }: PageProps<"/recipes/[slug]">): Promise<Metadata> {
   const { slug } = await params;
-  const recipe = await getRecipeBySlug(slug).catch(() => null);
+  const [recipe, copy] = await Promise.all([getRecipeBySlug(slug).catch(() => null), getCopy()]);
   return { title: recipe?.title ?? copy.errors.notFound };
 }
 
 export default async function RecipePage({ params }: PageProps<"/recipes/[slug]">) {
   const { slug } = await params;
-  const [recipe, viewer] = await Promise.all([getRecipeBySlug(slug), getViewer()]);
+  const [recipe, viewer, copy] = await Promise.all([getRecipeBySlug(slug), getViewer(), getCopy()]);
   if (!recipe) notFound();
+  const t = copy.recipe;
+  const v = vocab(copy);
 
   const [related, experiments, saved] = await Promise.all([
     getRelatedRecipes(recipe),
@@ -53,7 +53,7 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[slug]"
 
   return (
     <article>
-      <nav aria-label="Breadcrumb" className="mb-3 text-sm text-muted">
+      <nav aria-label={copy.common.breadcrumb} className="mb-3 text-sm text-muted">
         <Link href="/" className="hover:underline">
           {copy.nav.discover}
         </Link>{" "}
@@ -74,7 +74,7 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[slug]"
               ownerId={recipe.id}
               bucket={recipe.visibility === "public" ? BUCKETS.recipe : BUCKETS.private}
               folder={recipe.visibility === "public" ? `recipes/${recipe.id}` : `${viewer.userId}/recipes/${recipe.id}`}
-              label="Add result photo"
+              label={t.addResultPhoto}
               revalidate={`/recipes/${recipe.slug}`}
             />
           )}
@@ -84,10 +84,10 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[slug]"
         <div>
           <div className="mb-2 flex flex-wrap gap-1.5">
             <VerificationBadge status={recipe.verification_status} />
-            <Badge tone="clay">{SOURCE_TYPES[recipe.source_type]}</Badge>
+            <Badge tone="clay">{v.SOURCE_TYPES[recipe.source_type]}</Badge>
             {recipe.visibility === "private" && <Badge icon={<Lock className="h-3 w-3" aria-hidden />}>{t.personal}</Badge>}
-            {recipe.status === "draft" && <Badge tone="warn">Draft</Badge>}
-            {recipe.status === "archived" && <Badge tone="danger">Archived</Badge>}
+            {recipe.status === "draft" && <Badge tone="warn">{copy.common.draft}</Badge>}
+            {recipe.status === "archived" && <Badge tone="danger">{copy.common.archived}</Badge>}
           </div>
           <h1 className="font-serif text-3xl font-semibold tracking-tight md:text-4xl">{recipe.title}</h1>
           {recipe.description && <p className="mt-2 text-lg text-ink-soft">{recipe.description}</p>}
@@ -95,13 +95,13 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[slug]"
           <div className="mt-4 flex flex-wrap gap-2">
             <SaveButton recipeId={recipe.id} saved={saved.has(recipe.id)} signedIn={signedIn} />
             <form action={startExperimentFromRecipe.bind(null, recipe.id)}>
-              <SubmitButton pendingLabel="Starting…">
+              <SubmitButton pendingLabel={copy.common.starting}>
                 <FlaskConical className="h-4 w-4" aria-hidden />
                 {t.testThisCombo}
               </SubmitButton>
             </form>
             <form action={createVariation.bind(null, recipe.id)}>
-              <SubmitButton variant="outline" pendingLabel="Copying…">
+              <SubmitButton variant="outline" pendingLabel={copy.common.copying}>
                 <Copy className="h-4 w-4" aria-hidden />
                 {t.createVariation}
               </SubmitButton>
@@ -161,10 +161,10 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[slug]"
               <dl>
                 <Fact label={t.cone}>{recipe.cone ?? copy.common.unknown}</Fact>
                 <Fact label={t.atmosphere}>
-                  {ATMOSPHERES.find((a) => a.value === recipe.atmosphere)?.label ?? copy.common.unknown}
+                  {v.ATMOSPHERES.find((a) => a.value === recipe.atmosphere)?.label ?? copy.common.unknown}
                 </Fact>
                 <Fact label={t.clay}>
-                  {[recipe.clay_body_text, CLAY_COLORS.find((c) => c.value === recipe.clay_color)?.label]
+                  {[recipe.clay_body_text, v.CLAY_COLORS.find((c) => c.value === recipe.clay_color)?.label]
                     .filter(Boolean)
                     .join(" · ") || copy.common.unknown}
                 </Fact>
@@ -192,8 +192,8 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[slug]"
                     <LevelMeter value={recipe.crawl_risk} label={t.crawlRisk} />
                   </Fact>
                 )}
-                <Fact label={t.surface}>{recipe.surface_tags.map(humanizeTag).join(", ") || copy.common.unknown}</Fact>
-                <Fact label={t.opacity}>{recipe.opacity ?? copy.common.unknown}</Fact>
+                <Fact label={t.surface}>{v.tags(recipe.surface_tags) || copy.common.unknown}</Fact>
+                <Fact label={t.opacity}>{recipe.opacity ? v.opacity(recipe.opacity) : copy.common.unknown}</Fact>
               </dl>
             </Card>
           </Section>
@@ -203,7 +203,7 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[slug]"
               <Utensils className="mt-0.5 h-5 w-5 shrink-0 text-muted" aria-hidden />
               <div className="space-y-1 text-sm">
                 <DinnerwareBadge value={recipe.dinnerware_suitability} />
-                <p className="text-ink-soft">{DINNERWARE[recipe.dinnerware_suitability].hint}</p>
+                <p className="text-ink-soft">{v.DINNERWARE[recipe.dinnerware_suitability].hint}</p>
                 {multiGlaze && <p className="text-muted">{copy.safety.layeredFoodSafety}</p>}
               </div>
             </div>
@@ -212,9 +212,9 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[slug]"
 
         <div>
           <Section title={t.tags}>
-            <TagGroup label="Colors" tags={[...recipe.dominant_colors, ...recipe.color_tags]} param="color" />
-            <TagGroup label="Effects" tags={recipe.effect_tags} param="effect" />
-            <TagGroup label="Surface" tags={recipe.surface_tags} param="surface" />
+            <TagGroup label={t.colors} tags={[...recipe.dominant_colors, ...recipe.color_tags]} param="color" v={v} />
+            <TagGroup label={t.effects} tags={recipe.effect_tags} param="effect" v={v} />
+            <TagGroup label={t.surface} tags={recipe.surface_tags} param="surface" v={v} />
           </Section>
 
           <Section title={t.sources}>
@@ -228,11 +228,11 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[slug]"
                       <Link href={`/sources/${source.id}`} className="font-medium text-ink hover:underline">
                         {source.name}
                       </Link>
-                      <Badge>{SOURCE_TYPES[source.source_type]}</Badge>
-                      {is_primary && <Badge tone="glaze">Primary</Badge>}
+                      <Badge>{v.SOURCE_TYPES[source.source_type]}</Badge>
+                      {is_primary && <Badge tone="glaze">{copy.common.primary}</Badge>}
                     </div>
                     <p className="mt-1 text-xs text-muted">
-                      {[source.author, source.source_date && formatDate(source.source_date), `added ${formatDate(source.imported_at)}`]
+                      {[source.author, source.source_date && formatDate(source.source_date), copy.common.added(formatDate(source.imported_at))]
                         .filter(Boolean)
                         .join(" · ")}
                     </p>
@@ -269,7 +269,7 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[slug]"
                 <Link href={`/login?next=/recipes/${recipe.slug}`} className="text-glaze underline">
                   {copy.nav.signIn}
                 </Link>{" "}
-                to log your own tests of this combo.
+                {t.signInToLog}
               </p>
             ) : experiments.length === 0 ? (
               <p className="text-sm text-muted">{copy.lab.empty}</p>
@@ -286,7 +286,7 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[slug]"
 
       <Section title={t.related} className="mt-10">
         {related.length === 0 ? (
-          <EmptyState title="No related recipes yet." />
+          <EmptyState title={t.noRelated} />
         ) : (
           <RecipeGrid>
             {related.map((r) => (
@@ -299,7 +299,7 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[slug]"
   );
 }
 
-function TagGroup({ label, tags, param }: { label: string; tags: string[]; param: string }) {
+function TagGroup({ label, tags, param, v }: { label: string; tags: string[]; param: string; v: Vocab }) {
   const unique = Array.from(new Set(tags));
   if (unique.length === 0) return null;
   return (
@@ -312,7 +312,7 @@ function TagGroup({ label, tags, param }: { label: string; tags: string[]; param
             href={`/?${param}=${encodeURIComponent(tag)}`}
             className="inline-flex min-h-8 items-center rounded-full border border-line-strong bg-surface px-3 text-sm text-ink-soft hover:bg-surface-2"
           >
-            {humanizeTag(tag)}
+            {v.tag(tag)}
           </Link>
         ))}
       </div>

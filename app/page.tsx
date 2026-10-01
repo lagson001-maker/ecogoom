@@ -11,12 +11,13 @@ import { listDiscoverRecipes, getSavedRecipeIds } from "@/lib/data/recipes";
 import { listBrands, listGlazes, listSeries } from "@/lib/data/catalog";
 import { getInventoryGlazeIds, getTestedRecipeIds } from "@/lib/data/personal";
 import { activeFilterCount, parseDiscoverParams, toSearchParams, type DiscoverFilters } from "@/lib/discover-params";
-import { copy } from "@/lib/i18n";
-import { humanizeTag } from "@/lib/vocabulary";
+import type { Messages } from "@/lib/i18n";
+import { getCopy } from "@/lib/i18n/server";
+import { vocab } from "@/lib/vocabulary";
 
 export default async function DiscoverPage({ searchParams }: PageProps<"/">) {
   const f = parseDiscoverParams(await searchParams);
-  const viewer = await getViewer();
+  const [viewer, copy] = await Promise.all([getViewer(), getCopy()]);
 
   const [inventoryIds, testedIds, brands, series, glazes, saved] = await Promise.all([
     getInventoryGlazeIds(viewer.userId),
@@ -43,7 +44,7 @@ export default async function DiscoverPage({ searchParams }: PageProps<"/">) {
         </MobileFilters>
       </div>
 
-      <ActiveFilters f={f} searchTags={result.searchTags} />
+      <ActiveFilters f={f} searchTags={result.searchTags} copy={copy} />
 
       <div className="flex gap-8">
         <div className="min-w-0 flex-1">
@@ -89,22 +90,23 @@ export default async function DiscoverPage({ searchParams }: PageProps<"/">) {
   );
 }
 
-function ActiveFilters({ f, searchTags }: { f: DiscoverFilters; searchTags: string[] }) {
+function ActiveFilters({ f, searchTags, copy }: { f: DiscoverFilters; searchTags: string[]; copy: Messages }) {
+  const v = vocab(copy);
   const chips: { label: string; href: string }[] = [];
   const without = (o: Partial<DiscoverFilters>) => `/${toSearchParams(f, { ...o, page: 1 })}`;
   for (const b of f.brand) chips.push({ label: b, href: without({ brand: f.brand.filter((x) => x !== b) }) });
-  for (const c of f.color) chips.push({ label: c, href: without({ color: f.color.filter((x) => x !== c) }) });
-  for (const e of f.effect) chips.push({ label: humanizeTag(e), href: without({ effect: f.effect.filter((x) => x !== e) }) });
-  for (const s of f.surface) chips.push({ label: s, href: without({ surface: f.surface.filter((x) => x !== s) }) });
+  for (const c of f.color) chips.push({ label: v.tag(c), href: without({ color: f.color.filter((x) => x !== c) }) });
+  for (const e of f.effect) chips.push({ label: v.tag(e), href: without({ effect: f.effect.filter((x) => x !== e) }) });
+  for (const s of f.surface) chips.push({ label: v.tag(s), href: without({ surface: f.surface.filter((x) => x !== s) }) });
   if (f.glaze) chips.push({ label: f.glaze, href: without({ glaze: null }) });
   if (f.series) chips.push({ label: f.series, href: without({ series: null }) });
-  if (f.cone !== null) chips.push({ label: `Cone ${f.cone}`, href: without({ cone: null }) });
-  if (f.atmosphere) chips.push({ label: f.atmosphere, href: without({ atmosphere: null }) });
+  if (f.cone !== null) chips.push({ label: v.coneValue(f.cone), href: without({ cone: null }) });
+  if (f.atmosphere) chips.push({ label: v.ATMOSPHERES.find((a) => a.value === f.atmosphere)?.label ?? f.atmosphere, href: without({ atmosphere: null }) });
   if (f.clay) chips.push({ label: f.clay, href: without({ clay: null }) });
   if (f.glazes !== null) chips.push({ label: copy.common.glazes(f.glazes), href: without({ glazes: null }) });
   if (f.layers !== null) chips.push({ label: copy.common.layers(f.layers), href: without({ layers: null }) });
-  if (f.movement !== null) chips.push({ label: `movement ≤ ${f.movement}`, href: without({ movement: null }) });
-  if (f.risk !== null) chips.push({ label: `run risk ≤ ${f.risk}`, href: without({ risk: null }) });
+  if (f.movement !== null) chips.push({ label: copy.discover.movementMax(f.movement), href: without({ movement: null }) });
+  if (f.risk !== null) chips.push({ label: copy.discover.runRiskMax(f.risk), href: without({ risk: null }) });
   if (f.verified) chips.push({ label: copy.filters.verifiedOnly, href: without({ verified: false }) });
   if (f.mine) chips.push({ label: copy.filters.myGlazesOnly, href: without({ mine: false }) });
   if (f.tested) chips.push({ label: copy.filters.personalTested, href: without({ tested: false }) });
@@ -114,7 +116,7 @@ function ActiveFilters({ f, searchTags }: { f: DiscoverFilters; searchTags: stri
     <div className="mb-4 flex flex-wrap items-center gap-1.5">
       {searchTags.length > 0 && (
         <span className="mr-1 text-sm text-muted">
-          {copy.discover.interpretedAs}: <span className="text-ink-soft">{searchTags.map(humanizeTag).join(", ")}</span>
+          {copy.discover.interpretedAs}: <span className="text-ink-soft">{v.tags(searchTags)}</span>
         </span>
       )}
       {chips.map((c) => (
@@ -122,7 +124,7 @@ function ActiveFilters({ f, searchTags }: { f: DiscoverFilters; searchTags: stri
           key={c.label + c.href}
           href={c.href}
           className="inline-flex min-h-8 items-center gap-1 rounded-full bg-clay-soft px-2.5 text-sm text-clay-strong hover:bg-line"
-          aria-label={`Remove filter ${c.label}`}
+          aria-label={copy.discover.removeFilter(c.label)}
         >
           {c.label}
           <X className="h-3.5 w-3.5" aria-hidden />

@@ -10,20 +10,21 @@ import { int, isUuid, layersFromForm, oneOf, str, tags, type ActionState } from 
 import { isSafeStoragePath } from "@/lib/storage";
 import { uniqueSlug } from "@/lib/utils";
 import { ATMOSPHERES, CLAY_COLORS } from "@/lib/vocabulary";
-import { copy } from "@/lib/i18n";
+import { getCopy } from "@/lib/i18n/server";
 import type { SourceType, VerificationStatus } from "@/types/domain";
 
 const SOURCE_TYPES: SourceType[] = ["manufacturer", "community", "personal", "imported", "unknown"];
 
 /** Step 1: store what the user gave us as a draft; optionally ask AI for a suggested extraction. */
 export async function createImportDraft(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const copy = await getCopy();
   const viewer = await getViewer();
   if (!viewer.userId) return { ok: false, message: copy.auth.required };
 
   const url = str(fd, "source_url", 1000);
   const rawText = str(fd, "raw_text", 20000);
   const imagePath = str(fd, "image_path", 300);
-  if (!url && !rawText && !imagePath) return { ok: false, message: "Add a URL, some text or a screenshot." };
+  if (!url && !rawText && !imagePath) return { ok: false, message: copy.import.needInput };
   if (url && !/^https?:\/\//i.test(url)) return { ok: false, message: "URL must start with http(s)://", fieldErrors: { source_url: "Invalid URL" } };
   if (imagePath && (!isSafeStoragePath(imagePath) || !imagePath.startsWith(`${viewer.userId}/`))) {
     return { ok: false, message: copy.errors.invalidImage };
@@ -86,6 +87,7 @@ export type ApproveState =
 
 /** Step 3: the reviewer confirmed every field. Create source + recipe, or merge the source into a duplicate. */
 export async function approveImport(_prev: ApproveState, fd: FormData): Promise<ApproveState> {
+  const copy = await getCopy();
   const viewer = await getViewer();
   if (!viewer.userId) return { ok: false, message: copy.auth.required };
   const draftId = str(fd, "draft_id");
@@ -93,15 +95,15 @@ export async function approveImport(_prev: ApproveState, fd: FormData): Promise<
 
   const supabase = await createClient();
   const { data: draft } = await supabase.from("import_drafts").select("*").eq("id", draftId).maybeSingle();
-  if (!draft || draft.status !== "draft") return { ok: false, message: "This import was already handled." };
+  if (!draft || draft.status !== "draft") return { ok: false, message: copy.import.alreadyHandled };
 
   const title = str(fd, "title", 200);
   const layers = layersFromForm(fd);
   const cone = int(fd, "cone", -22, 14);
   const fieldErrors: Record<string, string> = {};
-  if (!title) fieldErrors.title = "Title is required.";
+  if (!title) fieldErrors.title = copy.form.titleRequired;
   if (layers.length === 0) fieldErrors.layers = copy.editor.needLayer;
-  if (Object.keys(fieldErrors).length) return { ok: false, message: "Please fix the highlighted fields.", fieldErrors };
+  if (Object.keys(fieldErrors).length) return { ok: false, message: copy.form.fixFields, fieldErrors };
 
   const decision = str(fd, "duplicate_decision"); // null | "separate:<recipeId>" | "merge:<recipeId>"
 

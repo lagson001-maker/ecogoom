@@ -5,6 +5,7 @@ import { Star, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { deleteMedia, setPrimaryMedia } from "./actions";
+import { useCopy } from "@/lib/i18n/client";
 import type { MediaWithUrl } from "@/types/domain";
 
 export function MediaGallery({
@@ -17,6 +18,7 @@ export function MediaGallery({
   revalidate?: string;
 }) {
   const router = useRouter();
+  const copy = useCopy();
   const [pending, start] = useTransition();
   if (media.length === 0) return null;
 
@@ -32,10 +34,10 @@ export function MediaGallery({
       {media.map((m) => (
         <li key={m.id} className="group relative aspect-square overflow-hidden rounded-lg border border-line bg-surface-2">
           <a href={m.url} target="_blank" rel="noreferrer">
-            <Image src={m.url} alt={m.alt_text ?? m.caption ?? "Result photo"} fill sizes="200px" className="object-cover" />
+            <Image src={m.url} alt={m.alt_text ?? m.caption ?? copy.media.photoAlt} fill sizes="200px" className="object-cover" />
           </a>
           {m.is_primary && (
-            <span className="absolute left-1 top-1 rounded bg-black/55 px-1.5 py-0.5 text-[10px] text-white">Cover</span>
+            <span className="absolute left-1 top-1 rounded bg-black/55 px-1.5 py-0.5 text-[10px] text-white">{copy.media.cover}</span>
           )}
           {canEdit && (
             <div className="absolute bottom-1 right-1 flex gap-1">
@@ -44,7 +46,7 @@ export function MediaGallery({
                   type="button"
                   onClick={() => run(() => setPrimaryMedia(m.id, revalidate))}
                   className="flex h-8 w-8 items-center justify-center rounded bg-surface/90 text-ink shadow"
-                  aria-label="Use as cover photo"
+                  aria-label={copy.media.useAsCover}
                 >
                   <Star className="h-4 w-4" aria-hidden />
                 </button>
@@ -52,10 +54,10 @@ export function MediaGallery({
               <button
                 type="button"
                 onClick={() => {
-                  if (confirm("Delete this photo?")) run(() => deleteMedia(m.id, revalidate));
+                  if (confirm(copy.media.confirmDelete)) run(() => deleteMedia(m.id, revalidate));
                 }}
                 className="flex h-8 w-8 items-center justify-center rounded bg-surface/90 text-danger shadow"
-                aria-label="Delete photo"
+                aria-label={copy.media.delete}
               >
                 <Trash2 className="h-4 w-4" aria-hidden />
               </button>

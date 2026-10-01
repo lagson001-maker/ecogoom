@@ -6,7 +6,7 @@ import { getPersonalContext } from "@/lib/data/personal";
 import { recommend } from "@/lib/recommendation/engine";
 import { emptyIntent, mergeIntents, parseTextIntent } from "@/lib/recommendation/intent";
 import { COLOR_TAGS, EFFECT_TAGS, SURFACE_TAGS } from "@/lib/vocabulary";
-import { copy } from "@/lib/i18n";
+import { getCopy } from "@/lib/i18n/server";
 import type {
   ImageVisualAnalysis,
   RecommendationCandidate,
@@ -71,13 +71,13 @@ function imageToIntent(a: ImageVisualAnalysis): VisualIntent {
 }
 
 async function loadReferenceImage(path: string): Promise<{ base64: string; mediaType: AIImageType } | { error: string }> {
-  const supabase = await createClient();
+  const [supabase, copy] = await Promise.all([createClient(), getCopy()]);
   // Downloaded with the user's session: Storage RLS restricts this to their own folder.
   const { data, error } = await supabase.storage.from("private-user-assets").download(path);
   if (error || !data) return { error: copy.errors.uploadFailed };
   const type = data.type as AIImageType;
   if (!AI_IMAGE_TYPES.includes(type)) return { error: copy.errors.invalidImage };
-  if (data.size > MAX_AI_IMAGE_BYTES) return { error: "Image too large for analysis (max 5 MB)." };
+  if (data.size > MAX_AI_IMAGE_BYTES) return { error: copy.ask.imageTooLarge };
   return { base64: Buffer.from(await data.arrayBuffer()).toString("base64"), mediaType: type };
 }
 
@@ -97,6 +97,7 @@ function applyRerank(candidates: RecommendationCandidate[], orderedIds: string[]
 
 export async function runAsk(input: AskInput): Promise<AskOutcome> {
   const ai = getAIProvider();
+  const copy = await getCopy();
   const notices: string[] = [];
   let imageAnalysis: ImageVisualAnalysis | null = null;
 
@@ -141,7 +142,7 @@ export async function runAsk(input: AskInput): Promise<AskOutcome> {
 
   // 2-5. Database candidates -> hard filter -> score -> diversify.
   const [recipes, personal] = await Promise.all([getRecommendationCandidates(), getPersonalContext(input.userId)]);
-  const result = recommend(recipes, { text: input.text, intent, constraints }, personal);
+  const result = recommend(recipes, { text: input.text, intent, constraints }, personal, undefined, copy);
 
   // 6. Optional AI rerank/explanation. It may only reorder these ids.
   const aiNotes: Record<string, string> = {};

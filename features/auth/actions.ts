@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/data/auth";
 import { publicEnv } from "@/lib/env";
 import { str, type ActionState } from "@/lib/forms";
-import { copy } from "@/lib/i18n";
+import { getCopy } from "@/lib/i18n/server";
 
 /** Only same-site relative redirects. */
 function safeNext(value: string | null): string {
@@ -24,11 +24,12 @@ async function siteOrigin(): Promise<string> {
 }
 
 export async function authAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const copy = await getCopy();
   const mode = str(fd, "mode") ?? "signin";
   const email = str(fd, "email", 320);
   const password = str(fd, "password", 200);
   const next = safeNext(str(fd, "next"));
-  if (!email) return { ok: false, message: "Email is required.", fieldErrors: { email: "Email is required." } };
+  if (!email) return { ok: false, message: copy.auth.emailRequired, fieldErrors: { email: copy.auth.emailRequired } };
 
   const supabase = await createClient();
   const origin = await siteOrigin();
@@ -41,7 +42,7 @@ export async function authAction(_prev: ActionState, fd: FormData): Promise<Acti
   }
 
   if (!password || password.length < 8) {
-    return { ok: false, message: "Password must be at least 8 characters.", fieldErrors: { password: "At least 8 characters." } };
+    return { ok: false, message: copy.auth.passwordTooShort, fieldErrors: { password: copy.auth.passwordHint } };
   }
 
   if (mode === "signup") {
@@ -65,6 +66,7 @@ export async function signOut(): Promise<void> {
 }
 
 export async function updateProfile(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const copy = await getCopy();
   const viewer = await getViewer();
   if (!viewer.userId) return { ok: false, message: copy.auth.required };
   const supabase = await createClient();
@@ -74,5 +76,5 @@ export async function updateProfile(_prev: ActionState, fd: FormData): Promise<A
     .eq("id", viewer.userId);
   if (error) return { ok: false, message: error.message };
   revalidatePath("/", "layout");
-  return { ok: true, message: "Profile saved." };
+  return { ok: true, message: copy.profile.saved };
 }

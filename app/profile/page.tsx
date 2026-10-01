@@ -7,12 +7,15 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { ProfileForm } from "@/features/auth/profile-form";
 import { signOut } from "@/features/auth/actions";
 import { getViewer } from "@/lib/data/auth";
-import { copy } from "@/lib/i18n";
+import { getCopy } from "@/lib/i18n/server";
 
-export const metadata: Metadata = { title: copy.nav.profile };
+export async function generateMetadata(): Promise<Metadata> {
+  const copy = await getCopy();
+  return { title: copy.nav.profile };
+}
 
 export default async function ProfilePage() {
-  const viewer = await getViewer();
+  const [viewer, copy] = await Promise.all([getViewer(), getCopy()]);
 
   const links = [
     { href: "/saved", label: copy.nav.saved, icon: Bookmark },
@@ -27,7 +30,7 @@ export default async function ProfilePage() {
     <>
       <PageHeader
         title={viewer.userId ? (viewer.profile?.display_name ?? copy.nav.profile) : copy.nav.profile}
-        subtitle={viewer.userId ? `${viewer.email ?? ""} · role: ${viewer.profile?.role ?? "user"}` : undefined}
+        subtitle={viewer.userId ? `${viewer.email ?? ""} · ${copy.profile.role(copy.profile.roles[viewer.profile?.role ?? "user"])}` : undefined}
       />
 
       {!viewer.userId && (
@@ -37,7 +40,7 @@ export default async function ProfilePage() {
         </LinkButton>
       )}
 
-      <nav aria-label="More">
+      <nav aria-label={copy.profile.more}>
         <ul className="divide-y divide-line overflow-hidden rounded-card border border-line bg-surface">
           {links.map(({ href, label, icon: Icon }) => (
             <li key={href}>
@@ -53,7 +56,7 @@ export default async function ProfilePage() {
 
       {viewer.userId && (
         <>
-          <Section title="Account">
+          <Section title={copy.profile.account}>
             <Card className="max-w-md p-4">
               <ProfileForm displayName={viewer.profile?.display_name ?? ""} />
             </Card>

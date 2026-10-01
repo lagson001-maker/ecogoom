@@ -8,17 +8,17 @@ import { GlazeCard, GlazeGrid } from "@/features/inventory/glaze-card";
 import { getViewer } from "@/lib/data/auth";
 import { getBrandBySlug, listGlazes, listSeries } from "@/lib/data/catalog";
 import { getInventoryGlazeIds } from "@/lib/data/personal";
-import { copy } from "@/lib/i18n";
+import { getCopy } from "@/lib/i18n/server";
 
 export async function generateMetadata({ params }: PageProps<"/brands/[slug]">): Promise<Metadata> {
   const { slug } = await params;
-  const brand = await getBrandBySlug(slug).catch(() => null);
+  const [brand, copy] = await Promise.all([getBrandBySlug(slug).catch(() => null), getCopy()]);
   return { title: brand?.name ?? copy.errors.notFound };
 }
 
 export default async function BrandPage({ params }: PageProps<"/brands/[slug]">) {
   const { slug } = await params;
-  const [brand, viewer] = await Promise.all([getBrandBySlug(slug), getViewer()]);
+  const [brand, viewer, copy] = await Promise.all([getBrandBySlug(slug), getViewer(), getCopy()]);
   if (!brand) notFound();
 
   const [glazes, series, owned] = await Promise.all([
@@ -30,7 +30,7 @@ export default async function BrandPage({ params }: PageProps<"/brands/[slug]">)
 
   return (
     <>
-      <nav aria-label="Breadcrumb" className="mb-3 text-sm text-muted">
+      <nav aria-label={copy.common.breadcrumb} className="mb-3 text-sm text-muted">
         <Link href="/brands" className="hover:underline">
           {copy.nav.brands}
         </Link>
@@ -41,7 +41,7 @@ export default async function BrandPage({ params }: PageProps<"/brands/[slug]">)
         actions={
           <>
             <LinkButton href={`/?brand=${brand.slug}`} variant="outline">
-              Recipes using {brand.name}
+              {copy.brands.recipesUsing(brand.name)}
             </LinkButton>
             {brand.website_url && (
               <a
@@ -50,7 +50,7 @@ export default async function BrandPage({ params }: PageProps<"/brands/[slug]">)
                 rel="noreferrer nofollow"
                 className="inline-flex h-11 items-center gap-1 px-2 text-sm text-glaze hover:underline"
               >
-                Website <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
+                {copy.brands.website} <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
               </a>
             )}
           </>
@@ -71,9 +71,9 @@ export default async function BrandPage({ params }: PageProps<"/brands/[slug]">)
         </div>
       )}
 
-      <Section title={`Glazes (${glazes.length})`} className="mt-0">
+      <Section title={copy.brands.glazesCount(glazes.length)} className="mt-0">
         {glazes.length === 0 ? (
-          <EmptyState title="No glazes for this brand yet." description="Editors can add products from the admin area." />
+          <EmptyState title={copy.brands.noGlazes} description={copy.brands.noGlazesHint} />
         ) : (
           <GlazeGrid>
             {glazes.map((g) => (

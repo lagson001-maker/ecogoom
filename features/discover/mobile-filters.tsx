@@ -4,10 +4,11 @@ import { SlidersHorizontal } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Sheet } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { copy } from "@/lib/i18n";
+import { useCopy } from "@/lib/i18n/client";
 
 /** Opens the (server-rendered) filter form in a bottom sheet on small screens. */
 export function MobileFilters({ count, children }: { count: number; children: ReactNode }) {
+  const copy = useCopy();
   const [open, setOpen] = useState(false);
   return (
     <>

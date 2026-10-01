@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useTransition } from "react";
 import {
   Bookmark,
   Building2,
@@ -16,7 +17,9 @@ import {
   UserRound,
   type LucideIcon,
 } from "lucide-react";
-import { copy } from "@/lib/i18n";
+import { LOCALES, type Messages } from "@/lib/i18n";
+import { setLocale } from "@/lib/i18n/actions";
+import { useCopy, useLocale } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -25,7 +28,7 @@ interface NavItem {
   icon: LucideIcon;
 }
 
-const primary: NavItem[] = [
+const primary = (copy: Messages): NavItem[] => [
   { href: "/", label: copy.nav.discover, icon: Compass },
   { href: "/ask", label: copy.nav.ask, icon: Sparkles },
   { href: "/lab", label: copy.nav.lab, icon: FlaskConical },
@@ -33,14 +36,14 @@ const primary: NavItem[] = [
   { href: "/saved", label: copy.nav.saved, icon: Bookmark },
 ];
 
-const secondary: NavItem[] = [
+const secondary = (copy: Messages): NavItem[] => [
   { href: "/glazes", label: copy.nav.library, icon: Library },
   { href: "/brands", label: copy.nav.brands, icon: Building2 },
   { href: "/sources", label: copy.nav.sources, icon: LinkIcon },
   { href: "/import", label: copy.nav.import, icon: Import },
 ];
 
-const mobile: NavItem[] = [
+const mobile = (copy: Messages): NavItem[] => [
   { href: "/", label: copy.nav.discover, icon: Compass },
   { href: "/ask", label: copy.nav.askShort, icon: Sparkles },
   { href: "/lab", label: copy.nav.labShort, icon: FlaskConical },
@@ -81,18 +84,19 @@ export function Sidebar({
   displayName: string | null;
 }) {
   const pathname = usePathname();
+  const copy = useCopy();
   return (
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-line bg-surface px-3 py-5 md:flex">
       <Link href="/" className="mb-6 flex items-center gap-2 px-3">
         <Logo />
         <span className="font-serif text-xl font-semibold tracking-tight">{copy.app.name}</span>
       </Link>
-      <nav aria-label="Main" className="flex flex-1 flex-col gap-0.5">
-        {primary.map((item) => (
+      <nav aria-label={copy.nav.main} className="flex flex-1 flex-col gap-0.5">
+        {primary(copy).map((item) => (
           <SideLink key={item.href} item={item} pathname={pathname} />
         ))}
         <hr className="my-3 border-line" />
-        {secondary.map((item) => (
+        {secondary(copy).map((item) => (
           <SideLink key={item.href} item={item} pathname={pathname} />
         ))}
         {isEditor && (
@@ -102,7 +106,8 @@ export function Sidebar({
           </>
         )}
       </nav>
-      <div className="border-t border-line pt-3">
+      <div className="space-y-2 border-t border-line pt-3">
+        <LanguageSwitch className="mx-3" />
         {signedIn ? (
           <SideLink item={{ href: "/profile", label: displayName ?? copy.nav.profile, icon: UserRound }} pathname={pathname} />
         ) : (
@@ -115,13 +120,14 @@ export function Sidebar({
 
 export function BottomNav() {
   const pathname = usePathname();
+  const copy = useCopy();
   return (
     <nav
-      aria-label="Main"
+      aria-label={copy.nav.main}
       className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
     >
       <ul className="grid grid-cols-5">
-        {mobile.map((item) => {
+        {mobile(copy).map((item) => {
           const active = isActive(pathname, item.href);
           const Icon = item.icon;
           return (
@@ -146,13 +152,52 @@ export function BottomNav() {
 }
 
 export function MobileHeader() {
+  const copy = useCopy();
   return (
-    <header className="sticky top-0 z-20 flex h-14 items-center border-b border-line bg-bg/95 px-4 backdrop-blur md:hidden">
+    <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-line bg-bg/95 px-4 backdrop-blur md:hidden">
       <Link href="/" className="flex items-center gap-2">
         <Logo />
         <span className="font-serif text-lg font-semibold">{copy.app.name}</span>
       </Link>
+      <LanguageSwitch />
     </header>
+  );
+}
+
+/** EN / VI toggle. Stores the choice in a cookie, then re-renders server components. */
+export function LanguageSwitch({ className }: { className?: string }) {
+  const copy = useCopy();
+  const locale = useLocale();
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  return (
+    <div
+      role="group"
+      aria-label={copy.nav.language}
+      className={cn("inline-flex rounded-lg bg-surface-2 p-0.5 text-xs font-semibold", pending && "opacity-60", className)}
+    >
+      {LOCALES.map((l) => (
+        <button
+          key={l}
+          type="button"
+          lang={l}
+          aria-pressed={locale === l}
+          disabled={pending}
+          onClick={() =>
+            start(async () => {
+              await setLocale(l);
+              router.refresh();
+            })
+          }
+          className={cn(
+            "h-8 min-w-10 rounded-md px-2.5 transition-colors",
+            locale === l ? "bg-surface text-ink shadow-sm" : "text-muted hover:text-ink",
+          )}
+        >
+          {copy.nav.languageNames[l]}
+        </button>
+      ))}
+    </div>
   );
 }
 

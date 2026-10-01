@@ -5,12 +5,16 @@ import { PageHeader } from "@/components/ui/primitives";
 import { LinkButton } from "@/components/ui/button";
 import { Swatch } from "@/features/recipes/stack";
 import { listGlazes } from "@/lib/data/catalog";
-import { copy } from "@/lib/i18n";
-import { coneLabel } from "@/lib/vocabulary";
+import { getCopy } from "@/lib/i18n/server";
+import { vocab } from "@/lib/vocabulary";
 
-export const metadata: Metadata = { title: copy.admin.glazes };
+export async function generateMetadata(): Promise<Metadata> {
+  const copy = await getCopy();
+  return { title: copy.admin.glazes };
+}
 
 export default async function AdminGlazesPage({ searchParams }: PageProps<"/admin/glazes">) {
+  const copy = await getCopy();
   const sp = await searchParams;
   const q = typeof sp.q === "string" ? sp.q : null;
   const glazes = await listGlazes({ q, includeInactive: true });
@@ -20,7 +24,7 @@ export default async function AdminGlazesPage({ searchParams }: PageProps<"/admi
         title={copy.admin.glazes}
         actions={
           <LinkButton href="/admin/glazes/new">
-            <Plus className="h-4 w-4" aria-hidden /> New glaze
+            <Plus className="h-4 w-4" aria-hidden /> {copy.glaze.newGlaze}
           </LinkButton>
         }
       />
@@ -29,8 +33,8 @@ export default async function AdminGlazesPage({ searchParams }: PageProps<"/admi
           name="q"
           type="search"
           defaultValue={q ?? ""}
-          placeholder="Search glazes…"
-          aria-label="Search glazes"
+          placeholder={copy.admin.searchGlazes}
+          aria-label={copy.admin.searchGlazes}
           className="h-11 w-full max-w-sm rounded-lg border border-line-strong bg-surface px-3"
         />
       </form>
@@ -47,8 +51,8 @@ export default async function AdminGlazesPage({ searchParams }: PageProps<"/admi
                   {g.series && ` · ${g.series.name}`}
                 </span>
               </span>
-              <span className="hidden text-xs text-muted sm:inline">{coneLabel(g.cone_min, g.cone_max)}</span>
-              {!g.active && <span className="text-xs text-warn">inactive</span>}
+              <span className="hidden text-xs text-muted sm:inline">{vocab(copy).coneLabel(g.cone_min, g.cone_max)}</span>
+              {!g.active && <span className="text-xs text-warn">{copy.admin.inactive}</span>}
             </Link>
           </li>
         ))}

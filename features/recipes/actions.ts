@@ -7,7 +7,7 @@ import { getViewer } from "@/lib/data/auth";
 import { bool, int, isUuid, layersFromForm, oneOf, str, tags, type ActionState } from "@/lib/forms";
 import { uniqueSlug } from "@/lib/utils";
 import { ATMOSPHERES, CLAY_COLORS, OPACITIES } from "@/lib/vocabulary";
-import { copy } from "@/lib/i18n";
+import { getCopy } from "@/lib/i18n/server";
 import type { DinnerwareSuitability, RecipeStatus, SourceType, VerificationStatus, Visibility } from "@/types/domain";
 
 const SOURCE_TYPES: SourceType[] = ["manufacturer", "community", "personal", "imported", "unknown"];
@@ -22,6 +22,7 @@ const STATUSES: RecipeStatus[] = ["draft", "published", "archived"];
 const DINNERWARE: DinnerwareSuitability[] = ["verified", "manufacturer_guidance", "unknown", "not_recommended"];
 
 export async function toggleSaveRecipe(recipeId: string): Promise<{ saved: boolean; error?: string }> {
+  const copy = await getCopy();
   const viewer = await getViewer();
   if (!viewer.userId) return { saved: false, error: copy.auth.required };
   if (!isUuid(recipeId)) return { saved: false, error: copy.errors.generic };
@@ -48,6 +49,7 @@ export async function toggleSaveRecipe(recipeId: string): Promise<{ saved: boole
 
 /** Create or update a recipe with its ordered layers and an optional new source. */
 export async function saveRecipe(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const copy = await getCopy();
   const viewer = await getViewer();
   if (!viewer.userId) return { ok: false, message: copy.auth.required };
 
@@ -55,9 +57,9 @@ export async function saveRecipe(_prev: ActionState, fd: FormData): Promise<Acti
   const title = str(fd, "title", 200);
   const layers = layersFromForm(fd);
   const fieldErrors: Record<string, string> = {};
-  if (!title) fieldErrors.title = "Title is required.";
+  if (!title) fieldErrors.title = copy.form.titleRequired;
   if (layers.length === 0) fieldErrors.layers = copy.editor.needLayer;
-  if (Object.keys(fieldErrors).length) return { ok: false, message: "Please fix the highlighted fields.", fieldErrors };
+  if (Object.keys(fieldErrors).length) return { ok: false, message: copy.form.fixFields, fieldErrors };
 
   // Non-editors can only ever write private, personal recipes.
   const visibility: Visibility = viewer.isEditor ? (oneOf(str(fd, "visibility"), ["public", "private"] as const) ?? "public") : "private";
@@ -141,7 +143,7 @@ export async function saveRecipe(_prev: ActionState, fd: FormData): Promise<Acti
 
   revalidatePath("/");
   revalidatePath(`/recipes/${slug}`);
-  if (bool(fd, "stay")) return { ok: true, message: "Saved." };
+  if (bool(fd, "stay")) return { ok: true, message: copy.admin.savedMsg };
   redirect(`/recipes/${slug}`);
 }
 
@@ -199,6 +201,7 @@ export async function createVariation(recipeId: string): Promise<void> {
 }
 
 export async function setRecipeStatus(recipeId: string, status: RecipeStatus): Promise<{ error?: string }> {
+  const copy = await getCopy();
   const viewer = await getViewer();
   if (!viewer.userId) return { error: copy.auth.required };
   if (!isUuid(recipeId) || !STATUSES.includes(status)) return { error: copy.errors.generic };

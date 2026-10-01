@@ -5,12 +5,17 @@ import { ImportForm } from "@/features/imports/import-form";
 import { requireUser } from "@/lib/data/auth";
 import { listImportDrafts } from "@/lib/data/sources";
 import { isAIConfigured } from "@/lib/ai";
-import { copy } from "@/lib/i18n";
+import { getCopy } from "@/lib/i18n/server";
+import type { Messages } from "@/lib/i18n";
 import { formatDate } from "@/lib/utils";
 
-export const metadata: Metadata = { title: copy.import.title };
+export async function generateMetadata(): Promise<Metadata> {
+  const copy = await getCopy();
+  return { title: copy.import.title };
+}
 
 export default async function ImportPage() {
+  const copy = await getCopy();
   const viewer = await requireUser("/import");
   const drafts = await listImportDrafts(viewer.userId);
   const open = drafts.filter((d) => d.status === "draft");
@@ -23,24 +28,24 @@ export default async function ImportPage() {
         <ImportForm userId={viewer.userId} aiConfigured={isAIConfigured()} />
       </Card>
       <p className="mt-3 text-xs text-muted">
-        Only import content you can access publicly or that was shared with you. Keep the original link so the provenance is never lost.
+        {copy.import.provenanceNote}
       </p>
 
       {open.length > 0 && (
-        <Section title={`Waiting for review (${open.length})`}>
-          <DraftList drafts={open} />
+        <Section title={copy.import.waiting(open.length)}>
+          <DraftList drafts={open} copy={copy} />
         </Section>
       )}
       {done.length > 0 && (
-        <Section title="History">
-          <DraftList drafts={done} />
+        <Section title={copy.import.history}>
+          <DraftList drafts={done} copy={copy} />
         </Section>
       )}
     </div>
   );
 }
 
-function DraftList({ drafts }: { drafts: Awaited<ReturnType<typeof listImportDrafts>> }) {
+function DraftList({ drafts, copy }: { drafts: Awaited<ReturnType<typeof listImportDrafts>>; copy: Messages }) {
   return (
     <ul className="divide-y divide-line overflow-hidden rounded-card border border-line bg-surface">
       {drafts.map((d) => (
@@ -48,11 +53,11 @@ function DraftList({ drafts }: { drafts: Awaited<ReturnType<typeof listImportDra
           <Link href={`/import/${d.id}`} className="flex min-h-14 items-center gap-3 px-4 py-2 hover:bg-surface-2">
             <span className="min-w-0 flex-1">
               <span className="block truncate font-medium">
-                {d.extracted?.title ?? d.source_name ?? d.source_url ?? d.raw_text?.slice(0, 60) ?? "Screenshot import"}
+                {d.extracted?.title ?? d.source_name ?? d.source_url ?? d.raw_text?.slice(0, 60) ?? copy.import.screenshotImport}
               </span>
               <span className="text-xs text-muted">{formatDate(d.created_at)}</span>
             </span>
-            <Badge tone={d.status === "approved" ? "ok" : d.status === "discarded" ? "neutral" : "warn"}>{d.status}</Badge>
+            <Badge tone={d.status === "approved" ? "ok" : d.status === "discarded" ? "neutral" : "warn"}>{copy.import.status[d.status]}</Badge>
           </Link>
         </li>
       ))}

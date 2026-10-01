@@ -35,7 +35,7 @@ Browser ──► Supabase Storage: upload ảnh trực tiếp (Storage RLS theo
 | `lib/ai/` | `AIProvider` interface + implementation Anthropic, schema zod cho structured output. |
 | `lib/ask/` | Orchestration của Ask: intent → filter → score → (AI rerank). |
 | `lib/vocabulary.ts` | Từ vựng tag chuẩn + lexicon EN/VI cho search. |
-| `lib/i18n/` | UI copy tập trung (English mặc định, sẵn cấu trúc cho Vietnamese). |
+| `lib/i18n/` | UI song ngữ EN/VI: `en.ts`/`vi.ts` cùng shape `Messages`; server dùng `getCopy()`, client dùng `useCopy()`. Ngôn ngữ lấy từ cookie `glazestack_locale`, mặc định theo `Accept-Language`; nút EN/VI ở sidebar và header mobile. |
 | `types/` | Domain types (`Brand`, `Glaze`, `Recipe`, `RecipeLayer`, `Experiment`, `RecommendationCandidate`, `VisualIntent`…). |
 | `supabase/migrations/` | Schema, RLS, storage buckets, RPC. |
 | `supabase/seed.sql` | Dữ liệu demo. |
@@ -197,7 +197,7 @@ Implementation dùng SDK chính thức `@anthropic-ai/sdk` với structured outp
 
 ## Giới hạn đã biết của V1
 
-- Locale tiếng Việt cho UI chưa dịch (cấu trúc đã sẵn ở `lib/i18n`). Search/Ask đã hiểu tiếng Việt.
+- Nội dung dữ liệu (tên men, mô tả công thức trong seed) chưa có bản dịch — chỉ giao diện và nhãn từ vựng được song ngữ. URL không tách theo ngôn ngữ (không có `/vi/...`).
 - Discover search xếp hạng tối đa 200 ứng viên đầu tiên trong bộ nhớ; đủ cho V1, Phase 2 chuyển sang full-text/vector.
 - Recommendation tải tối đa 500 recipe mỗi lần hỏi.
 - Import draft chỉ người tạo xem được (kể cả admin) — đúng với RLS “owner only”.

@@ -4,6 +4,7 @@
 
 import { ENGINE_CONFIG } from "./config";
 import { buildReasons, buildWarnings } from "./explain";
+import type { Messages } from "@/lib/i18n";
 import { applyHardFilters } from "./filters";
 import { intentHasSignals } from "./intent";
 import { scoreRecipe } from "./scoring";
@@ -25,6 +26,7 @@ export function recommend(
   request: RecommendationRequest,
   personal: PersonalContext = emptyPersonalContext(),
   count: number = ENGINE_CONFIG.resultCount,
+  messages?: Messages,
 ): RecommendationResult {
   const { intent, constraints } = request;
   const { passed, rejected } = applyHardFilters(recipes, constraints, personal);
@@ -43,8 +45,8 @@ export function recommend(
       recipe: s.recipe,
       score: s.breakdown,
       bucket,
-      reasons: buildReasons(s.recipe, intent, constraints, s.breakdown, s.owned),
-      warnings: buildWarnings(s.recipe),
+      reasons: buildReasons(s.recipe, intent, constraints, s.breakdown, s.owned, messages),
+      warnings: buildWarnings(s.recipe, messages),
       ownedGlazeCount: s.owned,
     };
   });

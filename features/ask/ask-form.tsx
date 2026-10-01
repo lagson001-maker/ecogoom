@@ -10,19 +10,9 @@ import { askAction, type AskState } from "./actions";
 import { AskResults } from "./ask-results";
 import { downscaleImage } from "./downscale";
 import { uploadImage, validateImage } from "@/features/media/image-upload";
-import { copy } from "@/lib/i18n";
-import {
-  ATMOSPHERES,
-  COLOR_CHIP_HEX,
-  COLOR_TAGS,
-  CONES,
-  DESIRED_SURFACES,
-  MOVEMENT_PREFERENCES,
-  RISK_TOLERANCES,
-} from "@/lib/vocabulary";
+import { useCopy } from "@/lib/i18n/client";
+import { COLOR_CHIP_HEX, COLOR_TAGS, CONES, vocab } from "@/lib/vocabulary";
 import type { GlazeOption } from "@/features/recipes/layer-editor";
-
-const t = copy.ask;
 
 export function AskForm({
   userId,
@@ -39,6 +29,10 @@ export function AskForm({
   defaultText: string;
   defaultOnlyMine: boolean;
 }) {
+  const copy = useCopy();
+  const t = copy.ask;
+  const v = vocab(copy);
+  const { ATMOSPHERES, DESIRED_SURFACES, MOVEMENT_PREFERENCES, RISK_TOLERANCES } = v;
   const id = useId();
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -54,7 +48,7 @@ export function AskForm({
   const [state, action] = useActionState<AskState, FormData>(async (prev, fd) => {
     if (file && userId && aiConfigured) {
       const small = await downscaleImage(file);
-      const up = await uploadImage(small, "private-user-assets", `${userId}/references`);
+      const up = await uploadImage(small, "private-user-assets", `${userId}/references`, copy);
       if (up.error || !up.path) return { ok: false, message: up.error ?? copy.errors.uploadFailed };
       fd.set("image_path", up.path);
     }
@@ -65,12 +59,12 @@ export function AskForm({
     if (state?.ok) resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [state]);
 
-  const imageDisabledReason = !aiConfigured ? t.aiNotConfigured : !userId ? "Sign in to analyze a reference image." : null;
+  const imageDisabledReason = !aiConfigured ? t.aiNotConfigured : !userId ? t.signInForImage : null;
 
   return (
     <>
       <StatefulForm action={action} className="flex flex-col gap-4">
-        <Field label="What look are you after?" htmlFor={`${id}-text`}>
+        <Field label={t.lookLabel} htmlFor={`${id}-text`}>
           <Textarea id={`${id}-text`} name="text" defaultValue={defaultText} placeholder={t.placeholder} rows={3} maxLength={1000} />
         </Field>
 
@@ -84,12 +78,12 @@ export function AskForm({
           ) : preview ? (
             <div className="relative inline-block">
               {/* eslint-disable-next-line @next/next/no-img-element -- local object URL preview */}
-              <img src={preview} alt="Reference preview" className="h-32 w-32 rounded-lg border border-line object-cover" />
+              <img src={preview} alt={t.previewAlt} className="h-32 w-32 rounded-lg border border-line object-cover" />
               <button
                 type="button"
                 onClick={() => selectFile(null)}
                 className="absolute -right-2 -top-2 flex h-8 w-8 items-center justify-center rounded-full bg-ink text-white"
-                aria-label="Remove image"
+                aria-label={t.removeImage}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -110,7 +104,7 @@ export function AskForm({
             disabled={Boolean(imageDisabledReason)}
             onChange={(e) => {
               const f = e.target.files?.[0] ?? null;
-              const invalid = f ? validateImage(f) : null;
+              const invalid = f ? validateImage(f, copy) : null;
               setFileError(invalid);
               selectFile(invalid ? null : f);
               e.target.value = "";
@@ -122,7 +116,7 @@ export function AskForm({
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Field label={t.maxGlazes} htmlFor={`${id}-mg`}>
             <Select id={`${id}-mg`} name="max_glazes" defaultValue="">
-              <option value="">Any</option>
+              <option value="">{copy.filters.any}</option>
               <option value="1">1</option>
               <option value="2">2</option>
               <option value="3">3</option>
@@ -131,7 +125,7 @@ export function AskForm({
           </Field>
           <Field label={copy.recipe.cone} htmlFor={`${id}-cone`}>
             <Select id={`${id}-cone`} name="cone" defaultValue="">
-              <option value="">Any</option>
+              <option value="">{copy.filters.any}</option>
               {CONES.map((c) => (
                 <option key={c} value={c}>
                   {c < 0 ? `0${Math.abs(c)}` : c}
@@ -162,7 +156,7 @@ export function AskForm({
               </Field>
               <Field label={copy.recipe.atmosphere} htmlFor={`${id}-atm`}>
                 <Select id={`${id}-atm`} name="atmosphere" defaultValue="">
-                  <option value="">Any</option>
+                  <option value="">{copy.filters.any}</option>
                   {ATMOSPHERES.map((a) => (
                     <option key={a.value} value={a.value}>
                       {a.label}
@@ -172,7 +166,7 @@ export function AskForm({
               </Field>
             </div>
             <Checkbox name="atmosphere_required" label={t.requireAtmosphere} />
-            <Field label="Clay body" htmlFor={`${id}-clay`}>
+            <Field label={copy.filters.clay} htmlFor={`${id}-clay`}>
               <Input id={`${id}-clay`} name="clay_body" placeholder="e.g. speckled buff" />
             </Field>
 
@@ -182,7 +176,7 @@ export function AskForm({
               ))}
             </ChipGroup>
             <ChipGroup legend={t.movement}>
-              <ChipRadio name="movement" value="" label="No preference" defaultChecked />
+              <ChipRadio name="movement" value="" label={t.noPreference} defaultChecked />
               {MOVEMENT_PREFERENCES.map((m) => (
                 <ChipRadio key={m.value} name="movement" value={m.value} label={m.label} />
               ))}
@@ -194,12 +188,12 @@ export function AskForm({
             </ChipGroup>
             <ChipGroup legend={t.preferredColors}>
               {COLOR_TAGS.filter((c) => c !== "clear").map((c) => (
-                <ChipCheckbox key={c} name="preferred_colors" value={c} label={c} swatch={COLOR_CHIP_HEX[c]} />
+                <ChipCheckbox key={c} name="preferred_colors" value={c} label={v.tag(c)} swatch={COLOR_CHIP_HEX[c]} />
               ))}
             </ChipGroup>
             <ChipGroup legend={t.avoidColors}>
               {COLOR_TAGS.filter((c) => c !== "clear").map((c) => (
-                <ChipCheckbox key={c} name="avoid_colors" value={c} label={c} swatch={COLOR_CHIP_HEX[c]} />
+                <ChipCheckbox key={c} name="avoid_colors" value={c} label={v.tag(c)} swatch={COLOR_CHIP_HEX[c]} />
               ))}
             </ChipGroup>
             <ChipGroup legend={t.preferredBrands}>
@@ -212,7 +206,7 @@ export function AskForm({
                 <ChipCheckbox key={b.id} name="excluded_brands" value={b.id} label={b.name} />
               ))}
             </ChipGroup>
-            <Field label="Allowed glazes" htmlFor={`${id}-allowed`} hint="Optional. Hold Ctrl/⌘ to pick several. Empty = any glaze.">
+            <Field label={t.allowedGlazes} htmlFor={`${id}-allowed`} hint={t.allowedGlazesHint}>
               <Select id={`${id}-allowed`} name="allowed_glazes" multiple className="h-40 py-2">
                 {glazes.map((g) => (
                   <option key={g.id} value={g.id}>
@@ -225,7 +219,7 @@ export function AskForm({
         </details>
 
         {state && !state.ok && <Alert tone="danger">{state.message}</Alert>}
-        <SubmitButton size="lg" pendingLabel={file ? "Analyzing image…" : "Searching…"}>
+        <SubmitButton size="lg" pendingLabel={file ? t.analyzing : t.searching}>
           <Sparkles className="h-4 w-4" aria-hidden />
           {t.submit}
         </SubmitButton>

@@ -17,16 +17,19 @@ import { getGlazeOptions } from "@/lib/data/catalog";
 import { getExperiment } from "@/lib/data/personal";
 import { isUuid } from "@/lib/forms";
 import { BUCKETS } from "@/lib/storage";
-import { copy } from "@/lib/i18n";
-import { ATMOSPHERES, CLAY_COLORS, EXPERIMENT_STATUS, humanizeTag } from "@/lib/vocabulary";
+import { getCopy } from "@/lib/i18n/server";
+import { vocab } from "@/lib/vocabulary";
 import { formatDate } from "@/lib/utils";
 
-export const metadata: Metadata = { title: copy.lab.title };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getCopy()).lab.title };
+}
 
 export default async function ExperimentPage({ params, searchParams }: PageProps<"/lab/[id]">) {
   const { id } = await params;
   const editing = (await searchParams).edit === "1";
-  const viewer = await requireUser(`/lab/${id}`);
+  const [viewer, copy] = await Promise.all([requireUser(`/lab/${id}`), getCopy()]);
+  const v = vocab(copy);
   if (!isUuid(id)) notFound();
   const experiment = await getExperiment(id);
   if (!experiment) notFound();
@@ -51,7 +54,7 @@ export default async function ExperimentPage({ params, searchParams }: PageProps
         title={e.title}
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
-            <Badge>{EXPERIMENT_STATUS[e.status]}</Badge>
+            <Badge>{v.EXPERIMENT_STATUS[e.status]}</Badge>
             {e.test_date && <span>{formatDate(e.test_date)}</span>}
             <Rating value={e.rating} />
             <SuccessBadge level={e.success_level} />
@@ -61,11 +64,11 @@ export default async function ExperimentPage({ params, searchParams }: PageProps
           <>
             <LinkButton href={`${path}?edit=1`}>
               <Pencil className="h-4 w-4" aria-hidden />
-              {e.status === "completed" ? copy.common.edit : "Edit / log result"}
+              {e.status === "completed" ? copy.common.edit : copy.lab.editLogResult}
             </LinkButton>
             {next && (
               <form action={setExperimentStatus.bind(null, e.id, next)}>
-                <SubmitButton variant="outline">Mark: {EXPERIMENT_STATUS[next]}</SubmitButton>
+                <SubmitButton variant="outline">{copy.lab.mark(v.EXPERIMENT_STATUS[next])}</SubmitButton>
               </form>
             )}
           </>
@@ -83,7 +86,7 @@ export default async function ExperimentPage({ params, searchParams }: PageProps
 
       <div className="grid gap-x-10 gap-y-2 lg:grid-cols-2">
         <div>
-          <Section title="Result photos" className="mt-0">
+          <Section title={copy.lab.resultPhotos} className="mt-0">
             <div className="space-y-3">
               <MediaGallery media={e.photos} canEdit revalidate={path} />
               <ImageUpload
@@ -103,7 +106,7 @@ export default async function ExperimentPage({ params, searchParams }: PageProps
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {e.result_tags.map((tag) => (
                     <Badge key={tag} tone={tag === "too_runny" ? "warn" : "neutral"}>
-                      {humanizeTag(tag)}
+                      {v.tag(tag)}
                     </Badge>
                   ))}
                 </div>
@@ -117,7 +120,7 @@ export default async function ExperimentPage({ params, searchParams }: PageProps
             {e.layers.length ? (
               <LayerStack layers={e.layers} clay={e.clay_body} />
             ) : (
-              <Alert>No layers yet. Edit the test to add glazes.</Alert>
+              <Alert>{copy.lab.noLayers}</Alert>
             )}
           </Section>
 
@@ -126,27 +129,27 @@ export default async function ExperimentPage({ params, searchParams }: PageProps
               <dl>
                 <Fact label={copy.recipe.cone}>{e.cone ?? copy.common.unknown}</Fact>
                 <Fact label={copy.recipe.atmosphere}>
-                  {ATMOSPHERES.find((a) => a.value === e.atmosphere)?.label ?? copy.common.unknown}
+                  {v.ATMOSPHERES.find((a) => a.value === e.atmosphere)?.label ?? copy.common.unknown}
                 </Fact>
                 <Fact label={copy.recipe.clay}>
-                  {[e.clay_body, CLAY_COLORS.find((c) => c.value === e.clay_color)?.label].filter(Boolean).join(" · ") ||
+                  {[e.clay_body, v.CLAY_COLORS.find((c) => c.value === e.clay_color)?.label].filter(Boolean).join(" · ") ||
                     copy.common.unknown}
                 </Fact>
-                <Fact label="Observed movement">
-                  <LevelMeter value={e.movement_level} label="Observed movement" />
+                <Fact label={copy.lab.observedMovement}>
+                  <LevelMeter value={e.movement_level} label={copy.lab.observedMovement} />
                 </Fact>
-                <Fact label="Observed run risk">
-                  <LevelMeter value={e.run_risk_observed} label="Observed run risk" />
+                <Fact label={copy.lab.observedRunRisk}>
+                  <LevelMeter value={e.run_risk_observed} label={copy.lab.observedRunRisk} />
                 </Fact>
               </dl>
             </Card>
-            {e.application_notes && <p className="mt-3 text-sm text-ink-soft"><strong>Application:</strong> {e.application_notes}</p>}
-            {e.kiln_notes && <p className="mt-1 text-sm text-ink-soft"><strong>Kiln:</strong> {e.kiln_notes}</p>}
+            {e.application_notes && <p className="mt-3 text-sm text-ink-soft"><strong>{copy.recipe.application}:</strong> {e.application_notes}</p>}
+            {e.kiln_notes && <p className="mt-1 text-sm text-ink-soft"><strong>{copy.lab.kiln}:</strong> {e.kiln_notes}</p>}
           </Section>
         </div>
       </div>
 
-      <Section title="Next steps">
+      <Section title={copy.lab.nextSteps}>
         <div className="flex flex-wrap gap-2">
           {e.promoted_recipe_id ? (
             <Badge tone="ok" icon={<ArrowUpRight className="h-3.5 w-3.5" aria-hidden />}>
@@ -161,7 +164,7 @@ export default async function ExperimentPage({ params, searchParams }: PageProps
             </form>
           )}
           <form action={deleteExperiment.bind(null, e.id)}>
-            <SubmitButton variant="ghost" className="text-danger" pendingLabel="Deleting…" confirmMessage="Delete permanently? This cannot be undone.">
+            <SubmitButton variant="ghost" className="text-danger" pendingLabel={copy.common.deleting} confirmMessage={copy.common.confirmDelete}>
               <Trash2 className="h-4 w-4" aria-hidden />
               {copy.common.delete}
             </SubmitButton>

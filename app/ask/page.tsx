@@ -4,11 +4,15 @@ import { AskForm } from "@/features/ask/ask-form";
 import { getViewer } from "@/lib/data/auth";
 import { getGlazeOptions, listBrands } from "@/lib/data/catalog";
 import { isAIConfigured } from "@/lib/ai";
-import { copy } from "@/lib/i18n";
+import { getCopy } from "@/lib/i18n/server";
 
-export const metadata: Metadata = { title: copy.ask.title };
+export async function generateMetadata(): Promise<Metadata> {
+  const copy = await getCopy();
+  return { title: copy.ask.title };
+}
 
 export default async function AskPage({ searchParams }: PageProps<"/ask">) {
+  const copy = await getCopy();
   const sp = await searchParams;
   const [viewer, brands, glazes] = await Promise.all([getViewer(), listBrands(), getGlazeOptions()]);
 

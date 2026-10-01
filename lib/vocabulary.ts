@@ -14,6 +14,7 @@ import type {
   VerificationStatus,
 } from "@/types/domain";
 import type { DesiredSurface, MovementPreference, RiskTolerance } from "@/types/recommendation";
+import type { Messages } from "@/lib/i18n";
 
 export const COLOR_TAGS = [
   "black", "white", "cream", "beige", "tan", "brown", "amber", "honey", "rust", "red",
@@ -161,6 +162,48 @@ export function coneLabel(min: number | null, max: number | null): string {
   if (min === null) return `Cone ${max}`;
   return `Cone ${min}–${max}`;
 }
+
+/**
+ * The vocabulary above with display labels in the reader's language. Values
+ * (what is stored and filtered on) never change; only labels are translated.
+ */
+export function vocab(m: Messages) {
+  const v = m.vocab;
+  const tag = (t: string) => v.tags[t] ?? humanizeTag(t);
+  const cone = (n: number | null) => (n === null ? v.coneUnknown : v.cone(String(n)));
+  return {
+    ATMOSPHERES: ATMOSPHERES.map((a) => ({ ...a, label: v.atmosphere[a.value] })),
+    CLAY_COLORS: CLAY_COLORS.map((c) => ({ ...c, label: v.clayColor[c.value] })),
+    COVERAGE_AREAS: COVERAGE_AREAS.map((c) => ({ ...c, label: v.coverage[c.value] })),
+    VERIFICATION: Object.fromEntries(
+      Object.entries(VERIFICATION).map(([k, x]) => [k, { ...x, ...v.verification[k as VerificationStatus] }]),
+    ) as typeof VERIFICATION,
+    SOURCE_TYPES: v.sourceType as Record<SourceType, string>,
+    DINNERWARE: v.dinnerware as Record<DinnerwareSuitability, { label: string; hint: string }>,
+    EXPERIMENT_STATUS: v.experimentStatus as Record<ExperimentStatus, string>,
+    SUCCESS_LEVELS: v.successLevel as Record<SuccessLevel, string>,
+    DESIRED_SURFACES: DESIRED_SURFACES.map((d) => ({ ...d, label: v.desiredSurface[d.value] })),
+    MOVEMENT_PREFERENCES: MOVEMENT_PREFERENCES.map((d) => ({ ...d, label: v.movementPreference[d.value] })),
+    RISK_TOLERANCES: RISK_TOLERANCES.map((d) => ({ ...d, label: v.riskTolerance[d.value] })),
+    opacity: (o: string) => v.opacity[o as Opacity] ?? o,
+    riskLevel: (level: ReturnType<typeof riskLevel>) => v.riskLevel[level],
+    tag,
+    tags: (list: readonly string[], sep = ", ") => list.map(tag).join(sep),
+    coneLabel(min: number | null, max: number | null): string {
+      if (min === null && max === null) return v.coneUnknown;
+      if (min === max || max === null) return cone(min);
+      if (min === null) return cone(max);
+      return v.cone(`${min}–${max}`);
+    },
+    coneValue: cone,
+    coverageLabel(area: CoverageArea, percent: number | null): string {
+      const base = v.coverage[area] ?? area;
+      return percent && area !== "full" ? `${base} (~${percent}%)` : base;
+    },
+  };
+}
+
+export type Vocab = ReturnType<typeof vocab>;
 
 // ---------------------------------------------------------------------------
 // Natural-language lexicon (EN + VI). Each phrase expands to tags.

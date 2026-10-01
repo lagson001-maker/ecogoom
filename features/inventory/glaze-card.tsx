@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { coneLabel } from "@/lib/vocabulary";
+import { getCopy } from "@/lib/i18n/server";
+import { vocab } from "@/lib/vocabulary";
 import { InventoryButton } from "./inventory-button";
 import type { GlazeWithBrand } from "@/types/domain";
 
 /** Compact visual glaze card: big swatch, brand, code, name, series. */
-export function GlazeCard({
+export async function GlazeCard({
   glaze,
   owned,
   signedIn,
@@ -15,6 +16,7 @@ export function GlazeCard({
   signedIn: boolean;
   footer?: React.ReactNode;
 }) {
+  const { coneLabel, tag } = vocab(await getCopy());
   return (
     <article className="relative flex flex-col overflow-hidden rounded-card border border-line bg-surface shadow-sm hover:shadow-md">
       <div className="relative h-20" style={{ background: glaze.swatch_hex ?? "#d9cbb7" }} aria-hidden>
@@ -31,7 +33,7 @@ export function GlazeCard({
           </Link>
         </h3>
         <p className="text-xs text-ink-soft">
-          {[glaze.series?.name, glaze.finish, coneLabel(glaze.cone_min, glaze.cone_max)].filter(Boolean).join(" · ")}
+          {[glaze.series?.name, glaze.finish && tag(glaze.finish), coneLabel(glaze.cone_min, glaze.cone_max)].filter(Boolean).join(" · ")}
         </p>
         <div className="mt-auto flex flex-wrap items-center gap-2 pt-2">
           <InventoryButton glazeId={glaze.id} owned={owned} signedIn={signedIn} size="sm" />

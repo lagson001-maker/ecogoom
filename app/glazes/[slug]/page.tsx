@@ -14,21 +14,21 @@ import { getGlazeBySlug, getGlazeUsage, type NeighborCount } from "@/lib/data/ca
 import { getExperimentsUsingGlaze, getInventoryGlazeIds } from "@/lib/data/personal";
 import { getSavedRecipeIds } from "@/lib/data/recipes";
 import { publicObjectUrl } from "@/lib/storage";
-import { copy } from "@/lib/i18n";
-import { coneLabel, humanizeTag } from "@/lib/vocabulary";
-
-const t = copy.glaze;
+import { getCopy } from "@/lib/i18n/server";
+import { vocab } from "@/lib/vocabulary";
 
 export async function generateMetadata({ params }: PageProps<"/glazes/[slug]">): Promise<Metadata> {
   const { slug } = await params;
-  const glaze = await getGlazeBySlug(slug).catch(() => null);
+  const [glaze, copy] = await Promise.all([getGlazeBySlug(slug).catch(() => null), getCopy()]);
   return { title: glaze ? `${glaze.brand.name} ${glaze.name}` : copy.errors.notFound };
 }
 
 export default async function GlazePage({ params }: PageProps<"/glazes/[slug]">) {
   const { slug } = await params;
-  const [glaze, viewer] = await Promise.all([getGlazeBySlug(slug), getViewer()]);
+  const [glaze, viewer, copy] = await Promise.all([getGlazeBySlug(slug), getViewer(), getCopy()]);
   if (!glaze) notFound();
+  const t = copy.glaze;
+  const v = vocab(copy);
 
   const [usage, owned, experiments, saved] = await Promise.all([
     getGlazeUsage(glaze.id),
@@ -40,7 +40,7 @@ export default async function GlazePage({ params }: PageProps<"/glazes/[slug]">)
 
   return (
     <>
-      <nav aria-label="Breadcrumb" className="mb-3 text-sm text-muted">
+      <nav aria-label={copy.common.breadcrumb} className="mb-3 text-sm text-muted">
         <Link href="/glazes" className="hover:underline">
           {t.library}
         </Link>{" "}
@@ -56,7 +56,7 @@ export default async function GlazePage({ params }: PageProps<"/glazes/[slug]">)
             {glaze.image_path ? (
               <Image
                 src={publicObjectUrl("public-glaze-assets", glaze.image_path)}
-                alt={`${glaze.brand.name} ${glaze.name} product image`}
+                alt={t.productImage(`${glaze.brand.name} ${glaze.name}`)}
                 fill
                 sizes="(min-width: 768px) 35vw, 100vw"
                 className="object-cover"
@@ -78,7 +78,7 @@ export default async function GlazePage({ params }: PageProps<"/glazes/[slug]">)
           <div className="mt-4 flex flex-wrap gap-2">
             <InventoryButton glazeId={glaze.id} owned={owned.includes(glaze.id)} signedIn={signedIn} />
             <LinkButton href={`/?glaze=${glaze.slug}`} variant="outline">
-              Recipes with this glaze
+              {t.recipesWith}
             </LinkButton>
             {viewer.isEditor && (
               <LinkButton href={`/admin/glazes/${glaze.id}`} variant="ghost">
@@ -90,23 +90,23 @@ export default async function GlazePage({ params }: PageProps<"/glazes/[slug]">)
           <Section title={t.characteristics}>
             <Card className="px-4 py-1">
               <dl>
-                <Fact label={t.type}>{humanizeTag(glaze.glaze_type)}</Fact>
-                <Fact label="Base color">
+                <Fact label={t.type}>{v.tag(glaze.glaze_type)}</Fact>
+                <Fact label={t.baseColor}>
                   <span className="inline-flex items-center gap-2">
                     <Swatch hex={glaze.swatch_hex} size="sm" />
                     {glaze.base_color ?? copy.common.unknown}
                   </span>
                 </Fact>
-                <Fact label="Color tags">{glaze.color_tags.join(", ") || "—"}</Fact>
-                <Fact label={t.finish}>{glaze.finish ?? copy.common.unknown}</Fact>
-                <Fact label={copy.recipe.opacity}>{glaze.opacity ?? copy.common.unknown}</Fact>
-                <Fact label={copy.recipe.cone}>{coneLabel(glaze.cone_min, glaze.cone_max)}</Fact>
+                <Fact label={t.colorTags}>{v.tags(glaze.color_tags) || "—"}</Fact>
+                <Fact label={t.finish}>{glaze.finish ? v.tag(glaze.finish) : copy.common.unknown}</Fact>
+                <Fact label={copy.recipe.opacity}>{glaze.opacity ? v.opacity(glaze.opacity) : copy.common.unknown}</Fact>
+                <Fact label={copy.recipe.cone}>{v.coneLabel(glaze.cone_min, glaze.cone_max)}</Fact>
                 <Fact label={t.foodSafeClaim}>
                   {glaze.manufacturer_food_safe_claim === null
-                    ? "No statement recorded"
+                    ? t.foodSafeNone
                     : glaze.manufacturer_food_safe_claim
-                      ? "Manufacturer states food safe (single glaze)"
-                      : "Manufacturer states not food safe"}
+                      ? t.foodSafeYes
+                      : t.foodSafeNo}
                 </Fact>
               </dl>
             </Card>
@@ -132,13 +132,13 @@ export default async function GlazePage({ params }: PageProps<"/glazes/[slug]">)
       </div>
 
       <div className="grid gap-x-10 md:grid-cols-2">
-        <Neighbors title={t.popularAbove} items={usage.above} />
-        <Neighbors title={t.popularBelow} items={usage.below} />
+        <Neighbors title={t.popularAbove} items={usage.above} empty={t.notEnoughData} />
+        <Neighbors title={t.popularBelow} items={usage.below} empty={t.notEnoughData} />
       </div>
 
       <Section title={`${t.recipesUsing} (${usage.recipes.length})`}>
         {usage.recipes.length === 0 ? (
-          <EmptyState title="No recipes use this glaze yet." />
+          <EmptyState title={t.noRecipes} />
         ) : (
           <RecipeGrid>
             {usage.recipes.slice(0, 12).map((r) => (
@@ -165,11 +165,11 @@ export default async function GlazePage({ params }: PageProps<"/glazes/[slug]">)
   );
 }
 
-function Neighbors({ title, items }: { title: string; items: NeighborCount[] }) {
+function Neighbors({ title, items, empty }: { title: string; items: NeighborCount[]; empty: string }) {
   return (
     <Section title={title}>
       {items.length === 0 ? (
-        <p className="text-sm text-muted">Not enough data yet.</p>
+        <p className="text-sm text-muted">{empty}</p>
       ) : (
         <ul className="divide-y divide-line rounded-card border border-line bg-surface">
           {items.map(({ glaze, count }) => (

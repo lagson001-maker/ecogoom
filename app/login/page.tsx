@@ -4,11 +4,15 @@ import { Card } from "@/components/ui/primitives";
 import { Logo } from "@/components/layout/nav";
 import { LoginForm } from "@/features/auth/login-form";
 import { getViewer } from "@/lib/data/auth";
-import { copy } from "@/lib/i18n";
+import { getCopy } from "@/lib/i18n/server";
 
-export const metadata: Metadata = { title: copy.nav.signIn };
+export async function generateMetadata(): Promise<Metadata> {
+  const copy = await getCopy();
+  return { title: copy.nav.signIn };
+}
 
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
+  const copy = await getCopy();
   const sp = await searchParams;
   const rawNext = typeof sp.next === "string" ? sp.next : "/";
   const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/";
@@ -32,7 +36,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         )}
         <LoginForm next={next} />
       </Card>
-      <p className="mt-4 text-center text-xs text-muted">Browsing recipes doesn&apos;t require an account.</p>
+      <p className="mt-4 text-center text-xs text-muted">{copy.auth.browseFree}</p>
     </div>
   );
 }
