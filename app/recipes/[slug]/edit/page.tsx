@@ -66,7 +66,8 @@ export default async function EditRecipePage({ params }: PageProps<"/recipes/[sl
           ...recipe,
           layers: recipe.layers.map((l) => ({
             glaze_id: l.glaze_id,
-            coat_count: l.coat_count,
+            // Unknown coats (e.g. imported test tiles) start at the editor default; the editor sets the real value.
+            coat_count: l.coat_count ?? 2,
             coverage_area: l.coverage_area,
             coverage_percent: l.coverage_percent,
             application_method: l.application_method,

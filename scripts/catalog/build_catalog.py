@@ -199,8 +199,11 @@ def mayco_rows():
             low = cap.lower()
             cone, atm = parse_firing(cap)
             if low.startswith(("over", "under")):
-                for code in re.findall(r"SW-?(\d+)", cap):
+                codes = re.findall(r"SW-?(\d+)", cap)
+                for pos, code in enumerate(codes):
                     other = f"SW-{code}"
+                    # Mayco photographs both flux tiles side by side: "(left)" then "(right)".
+                    side = ("left" if pos == 0 else "right") if len(codes) == 2 and "(left)" in low else None
                     if other == x["code"] or other not in by_code or cone is None:
                         continue
                     arrangement = "over" if low.startswith("over") else "under"
@@ -209,9 +212,10 @@ def mayco_rows():
                         continue
                     seen_clay.add(key)
                     rel = "over" if arrangement == "over" else "under"
+                    where = f" It is the {side} tile in the photo." if side else ""
                     pairs.append(dict(glaze=x["code"], other=other, arrangement=arrangement, cone=cone, image=src,
                                       url=x["url"], effect=f"Mayco test tile: {name} {rel} {by_code[other]['name']} "
-                                      f"({other}), cone {cone}{' ' + atm if atm else ''}. {cap}."))
+                                      f"({other}), cone {cone}{' ' + atm if atm else ''}.{where} Photo caption: {cap}."))
                 continue
             if cone is None or "coats" in low and "," in low and re.match(r"\d,\s*\d", low):
                 continue  # multi-thickness strips and uncaptioned images are skipped
@@ -321,6 +325,77 @@ join public.glazes o on o.brand_id = b.id and o.product_code = v.other;
 """
 
 
+def recipes_sql(brand, pairs, glaze_rows):
+    """One published two-layer recipe per test tile: top over bottom, as photographed."""
+    by_code = {r["code"]: r for r in glaze_rows}
+    seen, items = set(), []
+    for p in pairs:
+        top, bottom = (p["glaze"], p["other"]) if p["arrangement"] == "over" else (p["other"], p["glaze"])
+        key = (top, bottom, p["cone"])
+        if key in seen or top not in by_code or bottom not in by_code:
+            continue
+        seen.add(key)
+        t, b = by_code[top], by_code[bottom]
+        atm = "reduction" if p["cone"] >= 10 else "oxidation"
+        caption = p["effect"].split(". ", 1)[1] if ". " in p["effect"] else p["effect"]  # side + photo caption
+        items.append(dict(
+            slug=f"{brand}-tile-{slugify(t['name'])}-over-{slugify(b['name'])}-c{p['cone']}",
+            title=f"{t['name']} over {b['name']}", top=top, bottom=bottom, cone=p["cone"], atm=atm,
+            dominant=t["tags"][:2], secondary=[c for c in b["tags"] if c not in t["tags"][:2]][:3],
+            result=f"{brand.capitalize()} test tile, cone {p['cone']} {atm}. {caption}",
+            source_url=p["url"], source_name=f"{brand.capitalize()} product page: {by_code[p['glaze']]['name']} ({p['glaze']})"))
+    if not items:
+        return ""
+    src_vals = ",\n".join(f"  ({q(u)}, {q(n)})" for u, n in dict((i["source_url"], i["source_name"]) for i in items).items())
+    rec_vals = ",\n".join("  (" + ", ".join([
+        q(i["slug"]), q(i["title"]), str(i["cone"]), q(i["atm"]), q(i["result"]),
+        "array[" + ",".join(q(c) for c in i["dominant"]) + "]::text[]" if i["dominant"] else "'{}'::text[]",
+        "array[" + ",".join(q(c) for c in i["secondary"]) + "]::text[]" if i["secondary"] else "'{}'::text[]",
+        q(i["top"]), q(i["bottom"]), q(i["source_url"])]) + ")" for i in items)
+    cap = brand.capitalize()
+    return f"""-- {len(items)} recipes, one per {cap} layering test tile. Coats are not stated on the
+-- tiles, so layer coat_count stays NULL. Dinnerware stays 'unknown' (layered).
+insert into public.sources (name, url, source_type, evidence_level, notes)
+select v.name, v.url, 'manufacturer', 'manufacturer_documented', 'Captioned layering test tiles on the product page.'
+from (values
+{src_vals}
+) as v(url, name)
+where not exists (select 1 from public.sources s where s.url = v.url);
+
+drop table if exists _tile_recipes;
+create temporary table _tile_recipes (slug text, title text, cone smallint, atm text, result text,
+  dominant text[], secondary text[], top_code text, bottom_code text, source_url text);
+insert into _tile_recipes values
+{rec_vals};
+
+insert into public.recipes (title, slug, description, status, visibility, cone, atmosphere, clay_body_text, clay_color,
+  result_description, dominant_colors, color_tags, source_type, verification_status, dinnerware_suitability)
+select t.title, t.slug, {q(cap + " layering test tile, fired flat on a white clay body.")}, 'published', 'public', t.cone,
+       t.atm, 'White clay body ({cap} test chip)', 'white', t.result, t.dominant, t.secondary, 'manufacturer',
+       'manufacturer_documented', 'unknown'
+from _tile_recipes t
+on conflict (slug) do nothing;
+
+insert into public.recipe_layers (recipe_id, glaze_id, layer_position, coat_count, coverage_area)
+select r.id, g.id, l.pos, null, 'full'
+from _tile_recipes t
+join public.recipes r on r.slug = t.slug
+cross join lateral (values (1, t.bottom_code), (2, t.top_code)) as l(pos, code)
+join public.brands b on b.slug = '{brand}'
+join public.glazes g on g.brand_id = b.id and g.product_code = l.code
+on conflict (recipe_id, layer_position) do nothing;
+
+insert into public.recipe_sources (recipe_id, source_id, is_primary)
+select r.id, s.id, true
+from _tile_recipes t
+join public.recipes r on r.slug = t.slug
+join lateral (select id from public.sources where url = t.source_url order by imported_at limit 1) s on true
+on conflict (recipe_id, source_id) do nothing;
+
+drop table _tile_recipes;
+"""
+
+
 HEADER = """-- GENERATED by scripts/catalog/build_catalog.py from the manufacturer's own pages.
 -- Do not edit by hand; re-run the scripts instead. Every row keeps its source URL.
 -- Values not stated on the source page are NULL. Swatches are averaged from the
@@ -335,5 +410,6 @@ if __name__ == "__main__":
     m, clay, pairs = mayco_rows()
     open(os.path.join(out, "20_mayco.sql"), "w").write(
         HEADER + f"-- Mayco Stoneware: {len(m)} glazes, {len(clay)} clay-body results, {len(pairs)} layering tiles.\n\n"
-        + glazes_sql(m) + "\n" + clay_sql("mayco", clay) + "\n" + pairs_sql("mayco", pairs))
+        + glazes_sql(m) + "\n" + clay_sql("mayco", clay) + "\n" + pairs_sql("mayco", pairs) + "\n"
+        + recipes_sql("mayco", pairs, m))
     print(f"amaco {len(a)} | mayco {len(m)} glazes, {len(clay)} clay results, {len(pairs)} pairings", file=sys.stderr)

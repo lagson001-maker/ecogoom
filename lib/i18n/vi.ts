@@ -52,6 +52,7 @@ export const vi: Messages = {
     layers: (n: number) => `${n} lớp`,
     glazes: (n: number) => `${n} loại men`,
     coats: (n: number) => `${n} lượt`,
+    coatsUnknown: "chưa rõ số lượt",
     top: "TRÊN CÙNG",
     clay: "ĐẤT",
     illustration: "Minh hoạ từ mẫu màu men — không phải kết quả nung thật",
@@ -141,6 +142,12 @@ export const vi: Messages = {
     levelAria: (label: string, value: string) => `${label}: ${value} trên 5`,
     firedResult: (title: string) => `Kết quả nung: ${title}`,
     illustrationTag: "Minh hoạ",
+    tileTag: (credit: string) => `Ảnh thử của ${credit}`,
+    tileAlt: (title: string, credit: string) => `${title} — ảnh mẫu thử của ${credit}`,
+    visualTags: { glaze_photos: "Ảnh từng men riêng — chưa phải combo này", illustration: "Minh hoạ" },
+    tileCaption: (credit: string) =>
+      `Ảnh mẫu thử đã nung do ${credit} công bố cho đúng combo này. Đất, cách thi công và lò của bạn sẽ làm kết quả khác đi.`,
+    glazePhotosCaption: "Ảnh nung thật của từng men riêng lẻ. Chưa có ảnh của đúng combo này.",
   },
   editor: {
     newRecipe: "Công thức mới",

@@ -82,6 +82,7 @@ export function recipe(
     created_at: "",
     updated_at: "",
     primary_image: null,
+    reference_image: null,
     layers: glazes.map((g, i) => ({
       id: `${id}-l${i + 1}`,
       recipe_id: id,

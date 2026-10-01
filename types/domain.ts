@@ -185,7 +185,8 @@ export interface RecipeLayer {
   recipe_id: string;
   glaze_id: string;
   layer_position: number;
-  coat_count: number;
+  /** Null when the source does not state it (e.g. manufacturer test tiles). */
+  coat_count: number | null;
   coverage_percent: number | null;
   coverage_area: CoverageArea;
   application_method: string | null;
@@ -256,10 +257,19 @@ export interface MediaWithUrl extends MediaAsset {
   url: string;
 }
 
+/** A real photo of this exact combination published by someone else (e.g. a manufacturer test tile). */
+export interface RecipeReferenceImage {
+  kind: "manufacturer_tile";
+  url: string;
+  credit: string | null;
+  source_url: string | null;
+}
+
 /** Everything the recipe card and the recommendation engine need. */
 export interface RecipeSummary extends Recipe {
   layers: RecipeLayerWithGlaze[];
   primary_image: MediaWithUrl | null;
+  reference_image: RecipeReferenceImage | null;
 }
 
 export interface RecipeDetail extends RecipeSummary {

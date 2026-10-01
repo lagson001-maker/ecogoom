@@ -9,6 +9,8 @@ import { MiniStack, TileIllustration } from "./stack";
 import { SaveButton } from "./save-button";
 import { useCopy } from "@/lib/i18n/client";
 import { vocab } from "@/lib/vocabulary";
+import { recipeVisualKind } from "@/lib/recipe-images";
+import type { Messages } from "@/lib/i18n";
 import type { RecipeSummary } from "@/types/domain";
 
 export function RecipeVisual({ recipe, sizes, priority }: { recipe: RecipeSummary; sizes: string; priority?: boolean }) {
@@ -25,7 +27,48 @@ export function RecipeVisual({ recipe, sizes, priority }: { recipe: RecipeSummar
       />
     );
   }
+  const kind = recipeVisualKind(recipe);
+  if (kind === "manufacturer_tile" && recipe.reference_image) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- hotlinked manufacturer test tile, credited
+      <img
+        src={recipe.reference_image.url}
+        alt={copy.recipe.tileAlt(recipe.title, recipe.reference_image.credit ?? "")}
+        loading={priority ? "eager" : "lazy"}
+        referrerPolicy="no-referrer"
+        className="absolute inset-0 h-full w-full object-cover"
+      />
+    );
+  }
+  if (kind === "glaze_photos") {
+    const topDown = [...recipe.layers].sort((a, b) => b.layer_position - a.layer_position);
+    return (
+      <div className="absolute inset-0 flex flex-col" role="img" aria-label={copy.recipe.visualTags.glaze_photos}>
+        {topDown.map((l) => (
+          <div key={l.id} className="relative min-h-0 flex-1 border-b border-white/40 last:border-b-0">
+            {/* eslint-disable-next-line @next/next/no-img-element -- hotlinked manufacturer chip photo */}
+            <img
+              src={l.glaze.image_url!}
+              alt=""
+              loading={priority ? "eager" : "lazy"}
+              referrerPolicy="no-referrer"
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+            <span className="absolute left-1.5 top-1.5 rounded bg-black/45 px-1 text-[10px] text-white">{l.glaze.name}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
   return <TileIllustration layers={recipe.layers} className="absolute inset-0 h-full w-full" />;
+}
+
+/** Small label saying what kind of picture is shown, so a swatch is never mistaken for a fired result. */
+export function visualTag(recipe: RecipeSummary, copy: Messages): string | null {
+  const kind = recipeVisualKind(recipe);
+  if (kind === "own_photo") return null;
+  if (kind === "manufacturer_tile") return copy.recipe.tileTag(recipe.reference_image?.credit ?? copy.catalog.manufacturer);
+  return copy.recipe.visualTags[kind];
 }
 
 export function RecipeCard({
@@ -48,8 +91,8 @@ export function RecipeCard({
     <article className="group relative flex flex-col overflow-hidden rounded-card border border-line bg-surface shadow-sm transition-shadow hover:shadow-md">
       <div className="relative aspect-[4/5] overflow-hidden bg-surface-2">
         <RecipeVisual recipe={recipe} sizes="(min-width: 1280px) 22vw, (min-width: 768px) 30vw, 50vw" priority={priority} />
-        {!recipe.primary_image && (
-          <span className="absolute bottom-2 left-2 rounded bg-black/45 px-1.5 py-0.5 text-[10px] text-white">{copy.recipe.illustrationTag}</span>
+        {visualTag(recipe, copy) && (
+          <span className="absolute bottom-2 left-2 rounded bg-black/55 px-1.5 py-0.5 text-[10px] text-white">{visualTag(recipe, copy)}</span>
         )}
         <div className="absolute right-2 top-2 z-10">
           <SaveButton recipeId={recipe.id} saved={saved} signedIn={signedIn} compact />

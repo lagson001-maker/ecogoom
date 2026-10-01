@@ -19,8 +19,10 @@ import { getRecipeBySlug, getRelatedRecipes, getSavedRecipeIds } from "@/lib/dat
 import { getExperimentsForRecipe } from "@/lib/data/personal";
 import { getPairings } from "@/lib/data/catalog";
 import { avoidedPairsIn } from "@/lib/pairings";
+import { recipeVisualKind } from "@/lib/recipe-images";
 import { BUCKETS } from "@/lib/storage";
 import { getCopy } from "@/lib/i18n/server";
+import type { Messages } from "@/lib/i18n";
 import { riskLevel, vocab, type Vocab } from "@/lib/vocabulary";
 import { formatDate } from "@/lib/utils";
 
@@ -71,7 +73,7 @@ export default async function RecipePage({ params }: PageProps<"/recipes/[slug]"
           <div className="relative aspect-[4/3] overflow-hidden rounded-card border border-line bg-surface-2 lg:aspect-[4/5]">
             <RecipeVisual recipe={recipe} sizes="(min-width: 1024px) 40vw, 100vw" priority />
           </div>
-          {!recipe.primary_image && <p className="text-xs text-muted">{copy.common.illustration}</p>}
+          <VisualCaption recipe={recipe} copy={copy} />
           <MediaGallery media={recipe.media.filter((m) => m.id !== recipe.primary_image?.id || canEdit)} canEdit={canEdit} revalidate={`/recipes/${recipe.slug}`} />
           {canEdit && (
             <ImageUpload
@@ -336,5 +338,26 @@ function TagGroup({ label, tags, param, v }: { label: string; tags: string[]; pa
         ))}
       </div>
     </div>
+  );
+}
+
+function VisualCaption({ recipe, copy }: { recipe: Parameters<typeof recipeVisualKind>[0] & { reference_image: { credit: string | null; source_url: string | null } | null }; copy: Messages }) {
+  const kind = recipeVisualKind(recipe);
+  if (kind === "own_photo") return null;
+  const text =
+    kind === "manufacturer_tile"
+      ? copy.recipe.tileCaption(recipe.reference_image?.credit ?? copy.catalog.manufacturer)
+      : kind === "glaze_photos"
+        ? copy.recipe.glazePhotosCaption
+        : copy.common.illustration;
+  return (
+    <p className="text-xs text-muted">
+      {text}
+      {kind === "manufacturer_tile" && recipe.reference_image?.source_url && (
+        <a href={recipe.reference_image.source_url} target="_blank" rel="noreferrer nofollow" className="ml-1 text-glaze hover:underline">
+          {copy.catalog.source} ↗
+        </a>
+      )}
+    </p>
   );
 }

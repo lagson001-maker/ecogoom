@@ -2,6 +2,7 @@ import "server-only";
 import type { ServerSupabase } from "@/lib/supabase/server";
 import { isPublicBucket, publicObjectUrl } from "@/lib/storage";
 import type { MediaAsset, MediaOwnerType, MediaWithUrl } from "@/types/domain";
+import { chunks } from "@/lib/chunks";
 
 const SIGNED_URL_TTL = 60 * 60; // 1h
 
@@ -28,15 +29,20 @@ export async function getMediaFor(
 ): Promise<Map<string, MediaWithUrl[]>> {
   const result = new Map<string, MediaWithUrl[]>();
   if (ownerIds.length === 0) return result;
-  const { data, error } = await supabase
-    .from("media_assets")
-    .select("*")
-    .eq("owner_type", ownerType)
-    .in("owner_id", ownerIds)
-    .order("is_primary", { ascending: false })
-    .order("created_at", { ascending: true });
-  if (error) throw error;
-  const media = await withUrls(supabase, (data ?? []) as MediaAsset[]);
+  const pages = await Promise.all(
+    chunks(ownerIds).map(async (ids) => {
+      const { data, error } = await supabase
+        .from("media_assets")
+        .select("*")
+        .eq("owner_type", ownerType)
+        .in("owner_id", ids)
+        .order("is_primary", { ascending: false })
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as MediaAsset[];
+    }),
+  );
+  const media = await withUrls(supabase, pages.flat());
   for (const m of media) {
     const list = result.get(m.owner_id) ?? [];
     list.push(m);

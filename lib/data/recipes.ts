@@ -3,26 +3,50 @@ import { createClient, type ServerSupabase } from "@/lib/supabase/server";
 import { getMediaFor } from "./media";
 import { PAGE_SIZE, type DiscoverFilters } from "@/lib/discover-params";
 import { intentTags, parseTextIntent } from "@/lib/recommendation/intent";
-import type { Recipe, RecipeDetail, RecipeLayerWithGlaze, RecipeSource, RecipeSummary } from "@/types/domain";
+import { matchTile } from "@/lib/recipe-images";
+import { chunks } from "@/lib/chunks";
+import type { GlazePairing, Recipe, RecipeDetail, RecipeLayerWithGlaze, RecipeSource, RecipeSummary } from "@/types/domain";
 
 export const GLAZE_JOIN = "*, brand:brands(id,name,slug), series:glaze_series(id,name,slug)";
 export const RECIPE_SELECT = `*, layers:recipe_layers(*, glaze:glazes(${GLAZE_JOIN}))`;
 
 type RecipeRow = Recipe & { layers: RecipeLayerWithGlaze[] | null };
 
-function normalize(row: RecipeRow): Omit<RecipeSummary, "primary_image"> {
+function normalize(row: RecipeRow): Omit<RecipeSummary, "primary_image" | "reference_image"> {
   return {
     ...row,
     layers: [...(row.layers ?? [])].sort((a, b) => a.layer_position - b.layer_position),
   };
 }
 
-/** Rows -> RecipeSummary with primary images resolved in one media query. */
+/** Test-tile pairings that could illustrate any of these recipes (two-layer recipes only). */
+async function tilePairingsFor(supabase: ServerSupabase, rows: RecipeRow[]): Promise<GlazePairing[]> {
+  const ids = [...new Set(rows.filter((r) => (r.layers?.length ?? 0) === 2).flatMap((r) => r.layers!.map((l) => l.glaze_id)))];
+  if (ids.length === 0) return [];
+  const pages = await Promise.all(
+    chunks(ids).map(async (part) => {
+      const { data, error } = await supabase.from("glaze_pairings").select("*").not("image_url", "is", null).in("glaze_id", part);
+      if (error) throw error;
+      return (data ?? []) as GlazePairing[];
+    }),
+  );
+  return pages.flat();
+}
+
+/** Rows -> RecipeSummary with own photos and matching manufacturer tiles resolved in batch. */
 export async function hydrateSummaries(supabase: ServerSupabase, rows: RecipeRow[]): Promise<RecipeSummary[]> {
-  const media = await getMediaFor(supabase, "recipe", rows.map((r) => r.id));
+  const [media, tiles] = await Promise.all([
+    getMediaFor(supabase, "recipe", rows.map((r) => r.id)),
+    tilePairingsFor(supabase, rows),
+  ]);
   return rows.map((row) => {
     const list = media.get(row.id) ?? [];
-    return { ...normalize(row), primary_image: list.find((m) => m.is_primary) ?? list[0] ?? null };
+    const recipe = normalize(row);
+    return {
+      ...recipe,
+      primary_image: list.find((m) => m.is_primary) ?? list[0] ?? null,
+      reference_image: list.length ? null : matchTile(recipe, tiles),
+    };
   });
 }
 
@@ -134,10 +158,13 @@ export async function getRecipeBySlug(slug: string): Promise<RecipeDetail | null
   if (!data) return null;
 
   const row = data as RecipeRow & { sources: RecipeSource[] | null };
-  const media = (await getMediaFor(supabase, "recipe", [row.id])).get(row.id) ?? [];
+  const [mediaMap, tiles] = await Promise.all([getMediaFor(supabase, "recipe", [row.id]), tilePairingsFor(supabase, [row])]);
+  const media = mediaMap.get(row.id) ?? [];
+  const recipe = normalize(row);
   return {
-    ...normalize(row),
+    ...recipe,
     primary_image: media.find((m) => m.is_primary) ?? media[0] ?? null,
+    reference_image: media.length ? null : matchTile(recipe, tiles),
     media,
     sources: [...(row.sources ?? [])]
       .filter((s) => s.source)
@@ -257,7 +284,7 @@ export async function findSimilarRecipes(
   const recipes = await hydrateSummaries(supabase, (data ?? []) as RecipeRow[]);
   return recipes.filter((r) =>
     r.layers.every(
-      (l, i) => l.glaze_id === layers[i].glaze_id && Math.abs(l.coat_count - layers[i].coat_count) <= 1,
+      (l, i) => l.glaze_id === layers[i].glaze_id && Math.abs((l.coat_count ?? layers[i].coat_count) - layers[i].coat_count) <= 1,
     ),
   );
 }

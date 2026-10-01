@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { GLAZE_JOIN, getRecipesUsingGlaze } from "./recipes";
+import { chunks } from "@/lib/chunks";
 import type { Brand, GlazeClayResult, GlazePairing, GlazeSeries, GlazeWithBrand, RecipeSummary, Source } from "@/types/domain";
 
 export interface GlazeFilters {
@@ -79,12 +80,6 @@ export type ClayResultWithSource = GlazeClayResult & { source: Pick<Source, "id"
 
 const CLAY_RESULT_SELECT = "*, source:sources(id,name,url)";
 
-/** Keeps `in.(…)` filters well under URL length limits when a page shows the whole catalog. */
-function chunks<T>(list: T[], size = 50): T[][] {
-  const out: T[][] = [];
-  for (let i = 0; i < list.length; i += size) out.push(list.slice(i, i + size));
-  return out;
-}
 
 /** Documented results of each glaze on different clay bodies, grouped by glaze id. */
 export async function getClayResults(glazeIds: string[]): Promise<Map<string, ClayResultWithSource[]>> {

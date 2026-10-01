@@ -50,6 +50,7 @@ export const en = {
     layers: (n: number) => `${n} layer${n === 1 ? "" : "s"}`,
     glazes: (n: number) => `${n} glaze${n === 1 ? "" : "s"}`,
     coats: (n: number) => `${n} coat${n === 1 ? "" : "s"}`,
+    coatsUnknown: "coats not stated",
     top: "TOP",
     clay: "CLAY",
     illustration: "Illustration from glaze swatches — not a fired result",
@@ -139,6 +140,12 @@ export const en = {
     levelAria: (label: string, value: string) => `${label}: ${value} of 5`,
     firedResult: (title: string) => `Fired result: ${title}`,
     illustrationTag: "Illustration",
+    tileTag: (credit: string) => `${credit} test tile`,
+    tileAlt: (title: string, credit: string) => `${title} — test tile by ${credit}`,
+    visualTags: { glaze_photos: "Each glaze alone — not this combination", illustration: "Illustration" },
+    tileCaption: (credit: string) =>
+      `Fired test tile published by ${credit} for this exact combination. Your clay, application and kiln will change the result.`,
+    glazePhotosCaption: "Fired photos of each glaze on its own. No photo of this exact combination yet.",
   },
   editor: {
     newRecipe: "New recipe",

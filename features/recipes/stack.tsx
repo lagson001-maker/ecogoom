@@ -11,7 +11,7 @@ import type { CoverageArea, GlazeWithBrand } from "@/types/domain";
 
 export interface StackLayer {
   layer_position: number;
-  coat_count: number;
+  coat_count: number | null;
   coverage_area: CoverageArea;
   coverage_percent: number | null;
   application_method?: string | null;
@@ -45,7 +45,7 @@ export function MiniStack({ layers }: { layers: StackLayer[] }) {
         <li key={l.layer_position} className="flex items-center gap-1.5 text-ink">
           <Swatch hex={l.glaze.swatch_hex} size="sm" />
           <span className="truncate">{l.glaze.name}</span>
-          <span className="shrink-0 text-muted">×{l.coat_count}</span>
+          {l.coat_count !== null && <span className="shrink-0 text-muted">×{l.coat_count}</span>}
         </li>
       ))}
       <li className="text-[10px] font-semibold tracking-widest text-muted" aria-hidden>
@@ -74,7 +74,7 @@ export function LayerStack({ layers, clay }: { layers: StackLayer[]; clay?: stri
                 </Link>
                 {l.glaze.product_code && <span className="ml-1.5 text-xs text-muted">{l.glaze.product_code}</span>}
                 <p className="text-sm text-ink-soft">
-                  {copy.common.coats(l.coat_count)} · {coverageLabel(l.coverage_area, l.coverage_percent)}
+                  {l.coat_count !== null ? copy.common.coats(l.coat_count) : copy.common.coatsUnknown} · {coverageLabel(l.coverage_area, l.coverage_percent)}
                   {l.application_method && ` · ${l.application_method}`}
                 </p>
                 {l.notes && <p className="mt-0.5 text-xs text-muted">{l.notes}</p>}
